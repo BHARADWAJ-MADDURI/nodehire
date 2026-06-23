@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { claimAnonymousSession } from "@/lib/anonymous-session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -11,6 +12,10 @@ export async function GET(request: Request) {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        await claimAnonymousSession(data.user.id);
+      }
       return NextResponse.redirect(new URL(next, url.origin));
     }
   }
