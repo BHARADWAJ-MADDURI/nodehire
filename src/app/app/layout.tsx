@@ -26,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Brand />
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{data.user ? data.user.email : "30-day demo"}</Badge>
+            {data.user && <Link href="/settings" className="hidden text-sm text-muted-foreground hover:text-foreground sm:inline">Settings</Link>}
             <ThemeToggle />
             {data.user && <form action={signOut}><Button type="submit" size="icon" variant="ghost" aria-label="Sign out"><LogOut /></Button></form>}
           </div>
