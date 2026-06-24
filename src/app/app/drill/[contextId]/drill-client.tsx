@@ -18,8 +18,8 @@ type Topic = { id: string; name: string; domain: string };
 type Active = { sessionId: string; sessionQuestionId: string; questionText: string; framing: string; cacheHit: boolean; answerType: "text" | "code" | "diagram"; idealAnswer: string | null };
 type PendingFollowUp = { sessionQuestionId: string; questionText: string };
 
-export function DrillClient({ prepContextId, company, role, topics, authenticated }: { prepContextId: string; company: string; role: string; topics: Topic[]; authenticated: boolean }) {
-  const [topicId, setTopicId] = useState(topics[0]?.id ?? "");
+export function DrillClient({ prepContextId, company, role, topics, authenticated, preselectedLeafId }: { prepContextId: string; company: string; role: string; topics: Topic[]; authenticated: boolean; preselectedLeafId?: string }) {
+  const [topicId, setTopicId] = useState(topics.some((topic) => topic.id === preselectedLeafId) ? preselectedLeafId! : topics[0]?.id ?? "");
   const [difficulty, setDifficulty] = useState("medium");
   const [active, setActive] = useState<Active | null>(null);
   const [answer, setAnswer] = useState("");

@@ -31,4 +31,15 @@ describe("analyzePrepContext", () => {
     const ids = result.branches.flatMap((branch) => branch.topics.map((topic) => topic.id));
     expect(ids).toEqual(expect.arrayContaining(["data-pipelines", "sql", "distributed-data", "warehousing", "data-quality"]));
   });
+
+  it("maps broad frontend signals to drillable React and JavaScript sub-leaves", () => {
+    const result = analyzePrepContext({
+      company: "Example",
+      role: "Senior Frontend Engineer",
+      jobDescription: "Build React hooks and state management, diagnose render performance, and explain the JavaScript event loop and TypeScript generics.",
+    });
+    const ids = result.branches.flatMap((branch) => branch.topics.map((topic) => topic.id));
+    expect(ids).toEqual(expect.arrayContaining(["react-hooks", "react-state-management", "react-rendering-performance", "js-async-event-loop", "ts-type-system"]));
+    expect(ids).not.toContain("react");
+  });
 });
