@@ -39,15 +39,18 @@ export function useSpeech(onTranscript: (value: string) => void) {
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<Recognition | null>(null);
   const baseTextRef = useRef("");
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       window.speechSynthesis?.cancel();
     };
   }, []);
 
   const stopListening = useCallback(() => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     recognitionRef.current?.stop();
     setIsListening(false);
   }, []);
@@ -66,8 +69,14 @@ export function useSpeech(onTranscript: (value: string) => void) {
     baseTextRef.current = existingText.trim();
     recognition.onresult = (event) => {
       let transcript = "";
-      for (let index = 0; index < event.results.length; index += 1) transcript += event.results[index][0].transcript;
+      let finalResult = false;
+      for (let index = 0; index < event.results.length; index += 1) {
+        transcript += event.results[index][0].transcript;
+        finalResult ||= event.results[index].isFinal;
+      }
       onTranscript([baseTextRef.current, transcript.trim()].filter(Boolean).join(" "));
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => recognition.stop(), finalResult ? 1400 : 2400);
     };
     recognition.onerror = (event) => {
       setError(event.error === "not-allowed" ? "Microphone permission was denied. Enable it in browser settings or type your answer." : "Voice input stopped unexpectedly. Your transcript is still editable.");
@@ -84,7 +93,10 @@ export function useSpeech(onTranscript: (value: string) => void) {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
+    const voices = window.speechSynthesis.getVoices().filter((voice) => voice.lang.startsWith("en"));
+    utterance.voice = voices.find((voice) => /Google US English|Microsoft.*Natural|Samantha|Ava|Alex/i.test(voice.name)) ?? voices.find((voice) => voice.lang === "en-US") ?? voices[0] ?? null;
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
     window.speechSynthesis.speak(utterance);
   }, []);
 
