@@ -29,6 +29,8 @@ export async function getCachedOrGenerateQuestion(input: {
     mode: input.mode,
     difficulty: input.difficulty,
     question_text: generated.questionText,
+    answer_type: generated.answerType,
+    ideal_answer: generated.idealAnswer,
     evaluation_rubric: generated.evaluationRubric,
     follow_up_hints: generated.followUpHints,
     source: "deterministic-v1",
