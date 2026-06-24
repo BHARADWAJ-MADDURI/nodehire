@@ -28,10 +28,18 @@ export function generateQuestion(input: {
       ? "Include failure modes, tradeoffs, observability, and how your approach changes at scale."
       : "Explain the major tradeoffs and how you would validate the outcome.";
   const modeLead = input.mode === "mock" ? "In an interview-style response, " : "For this focused drill, ";
+  const answerType = skill.id === "data-structures" ? "code" : skill.id === "system-design" ? "diagram" : "text";
+  const dimensions = answerType === "code"
+    ? ["reasoning-based correctness", "estimated time and space complexity", "edge-case awareness", "communication of approach"]
+    : answerType === "diagram"
+      ? ["scalability reasoning", "tradeoff awareness", "bottleneck identification", "diagram clarity"]
+      : ["technical accuracy", "structured reasoning", "tradeoff awareness", "concrete evidence"];
   return {
+    answerType,
     questionText: `${modeLead}${base} ${depth}`,
+    idealAnswer: `A strong ${skill.name} answer states assumptions, presents a structured approach, covers important tradeoffs and failure modes, and explains how the outcome would be validated.`,
     evaluationRubric: {
-      dimensions: ["technical accuracy", "structured reasoning", "tradeoff awareness", "concrete evidence"],
+      dimensions,
       strongAnswerSignals: ["states assumptions", "covers risks", "explains validation", "communicates decisions clearly"],
     },
     followUpHints: ["Ask for a concrete example.", "Probe the largest failure mode.", "Ask what they would measure."],

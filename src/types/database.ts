@@ -59,6 +59,7 @@ export type Database = {
       };
       ontology_skills: {
         Row: {
+          answer_type: string;
           created_at: string;
           description: string;
           domain: string;
@@ -67,6 +68,7 @@ export type Database = {
           parent_id: string | null;
         };
         Insert: {
+          answer_type?: string;
           description: string;
           domain: string;
           id: string;
@@ -142,12 +144,14 @@ export type Database = {
       };
       question_bank: {
         Row: {
+          answer_type: string;
           created_at: string;
           difficulty: string;
           evaluation_rubric: Json;
           follow_up_hints: Json;
           hit_count: number;
           id: string;
+          ideal_answer: string | null;
           mode: string;
           ontology_leaf_id: string;
           question_text: string;
@@ -155,10 +159,12 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          answer_type?: string;
           difficulty: string;
           evaluation_rubric?: Json;
           follow_up_hints?: Json;
           id?: string;
+          ideal_answer?: string | null;
           mode: string;
           ontology_leaf_id: string;
           question_text: string;
