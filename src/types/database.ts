@@ -197,9 +197,24 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["weakness_profiles"]["Insert"]>;
         Relationships: [];
       };
+      app_usage_daily: {
+        Row: { usage_date: string; successful_units: number; reserved_units: number; updated_at: string };
+        Insert: { usage_date: string; successful_units?: number; reserved_units?: number; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["app_usage_daily"]["Insert"]>;
+        Relationships: [];
+      };
+      user_provider_keys: {
+        Row: { user_id: string; provider: string; encrypted_key: Json; created_at: string; updated_at: string };
+        Insert: { user_id: string; provider: string; encrypted_key: Json; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["user_provider_keys"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      reserve_app_usage: { Args: { p_units: number; p_ceiling: number }; Returns: boolean };
+      finish_app_usage: { Args: { p_units: number; p_success: boolean }; Returns: undefined };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
