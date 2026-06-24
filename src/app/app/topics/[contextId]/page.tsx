@@ -38,6 +38,7 @@ export default async function TopicMapPage({ params }: { params: Promise<{ conte
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">{context.role} topic map</h1>
           <p className="mt-2 text-muted-foreground">Weighted from the role, job description, and portable skill ontology.</p>
         </div>
+        <Link href={`/app/drill/${context.id}`} className={buttonVariants()}>Start adaptive drill</Link>
       </div>
       <TopicMapView prepContextId={context.id} initialAnalysis={analysis ?? null} />
     </main>
