@@ -140,6 +140,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      question_bank: {
+        Row: {
+          created_at: string;
+          difficulty: string;
+          evaluation_rubric: Json;
+          follow_up_hints: Json;
+          hit_count: number;
+          id: string;
+          mode: string;
+          ontology_leaf_id: string;
+          question_text: string;
+          source: string;
+          updated_at: string;
+        };
+        Insert: {
+          difficulty: string;
+          evaluation_rubric?: Json;
+          follow_up_hints?: Json;
+          id?: string;
+          mode: string;
+          ontology_leaf_id: string;
+          question_text: string;
+          source?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["question_bank"]["Insert"]> & { hit_count?: number };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
