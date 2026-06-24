@@ -40,19 +40,19 @@ export default async function WorkspacePage({
         <div><p className="text-sm font-medium text-primary">Workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Prep contexts</h1><p className="mt-2 text-muted-foreground">Keep each job opportunity focused and separate.</p></div>
         {contexts.length > 0 && <Badge variant="secondary">{contexts.length} saved</Badge>}
       </div>
-      {params.saved && <p role="status" className="mt-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">Prep context saved. Topic analysis arrives in Phase 2.</p>}
+      {params.saved && <p role="status" className="mt-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">Prep context saved. Generate its weighted topic map when you are ready.</p>}
 
       <Card className="glass-panel mt-8 border-0">
         <CardHeader><CardTitle>{editing ? "Edit prep context" : "Add a prep context"}</CardTitle><CardDescription>Company, role, and job description are required.</CardDescription></CardHeader>
         <CardContent><PrepContextForm key={editing?.id ?? "new"} initial={editing} />{editing && <Link href="/app" className={buttonVariants({ variant: "ghost", className: "mt-3" })}>Cancel editing</Link>}</CardContent>
       </Card>
 
-      <section className="mt-10">
+      <section id="contexts" className="mt-10 scroll-mt-24">
         <h2 className="text-lg font-semibold">Saved contexts</h2>
         {contexts.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">Your saved interview targets will appear here.</div> : <div className="mt-4 grid gap-4 xl:grid-cols-2">{contexts.map((context) => (
           <Card key={context.id} className="bg-card/65">
             <CardHeader><div className="flex items-start justify-between gap-4"><div><CardTitle>{context.role}</CardTitle><CardDescription className="mt-1">{context.company}</CardDescription></div>{context.seniority && <Badge variant="outline">{context.seniority}</Badge>}</div></CardHeader>
-            <CardContent><p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{context.job_description}</p><div className="mt-5 flex gap-2"><Link href={`/app?edit=${context.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Edit</Link><form action={deletePrepContext}><input type="hidden" name="id" value={context.id} /><Button type="submit" size="sm" variant="ghost" className="text-destructive">Delete</Button></form></div></CardContent>
+            <CardContent><p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{context.job_description}</p><div className="mt-5 flex flex-wrap gap-2"><Link href={`/app/topics/${context.id}`} className={buttonVariants({ size: "sm" })}>Open topic map</Link><Link href={`/app?edit=${context.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Edit</Link><form action={deletePrepContext}><input type="hidden" name="id" value={context.id} /><Button type="submit" size="sm" variant="ghost" className="text-destructive">Delete</Button></form></div></CardContent>
           </Card>
         ))}</div>}
       </section>
