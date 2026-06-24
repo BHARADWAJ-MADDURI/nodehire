@@ -29,11 +29,19 @@ export async function POST(request: Request) {
   await updatePracticeSignals({ userId: session.user_id, anonymousSessionId: session.anonymous_session_id, ontologyLeafId: item.ontology_leaf_id, score: evaluation.score });
 
   let followUp = null;
-  if (evaluation.needsFollowUp && evaluation.followUpPrompt) {
+  let sessionComplete = false;
+  if (session.mode === "drill" && evaluation.needsFollowUp && evaluation.followUpPrompt) {
     const { data } = await admin.from("session_questions").insert({ session_id: session.id, question_id: item.question_id, ontology_leaf_id: item.ontology_leaf_id, sequence_number: item.sequence_number + 1, prompt_override: evaluation.followUpPrompt, is_follow_up: true }).select("id, prompt_override").single();
     followUp = data ? { sessionQuestionId: data.id, questionText: data.prompt_override } : null;
-  } else {
+  } else if (session.mode === "drill") {
     await admin.from("practice_sessions").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", session.id);
+    sessionComplete = true;
+  } else {
+    const { count } = await admin.from("session_questions").select("id", { count: "exact", head: true }).eq("session_id", session.id).is("answered_at", null);
+    if ((count ?? 0) === 0) {
+      await admin.from("practice_sessions").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", session.id);
+      sessionComplete = true;
+    }
   }
-  return NextResponse.json({ ok: true, evaluation, followUp });
+  return NextResponse.json({ ok: true, evaluation, followUp, sessionComplete });
 }
