@@ -1,0 +1,17 @@
+import { describe, expect, it } from "vitest";
+import { evaluateAnswer } from "./evaluate-answer";
+
+describe("evaluateAnswer", () => {
+  it("creates a follow-up for a weak answer", () => {
+    const result = evaluateAnswer("I would test it.", "API Testing");
+    expect(result.needsFollowUp).toBe(true);
+    expect(result.followUpPrompt).toContain("failure mode");
+  });
+
+  it("recognizes a structured, evidence-backed answer", () => {
+    const answer = "First, I define the risks and assumptions. For example, in my last project we measured error rates and latency, then added contract tests and monitoring alerts. We considered security edge cases, rollback, and failure recovery. Finally, I validated the result with production metrics and the team reduced incidents. ".repeat(3);
+    const result = evaluateAnswer(answer, "API Testing");
+    expect(result.score).toBeGreaterThanOrEqual(80);
+    expect(result.needsFollowUp).toBe(false);
+  });
+});
