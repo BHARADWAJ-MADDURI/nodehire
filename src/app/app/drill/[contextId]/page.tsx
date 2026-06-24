@@ -12,5 +12,5 @@ export default async function DrillPage({ params }: { params: Promise<{ contextI
   const { data: mappings } = tree ? await admin.from("topic_skill_mappings").select("ontology_leaf_id").eq("topic_tree_id", tree.id).eq("selected", true).order("weight", { ascending: false }) : { data: [] };
   const ids = (mappings ?? []).map((item) => item.ontology_leaf_id);
   const { data: skills } = ids.length ? await admin.from("ontology_skills").select("id, name, domain").in("id", ids) : { data: [] };
-  return <DrillClient prepContextId={context.id} company={context.company} role={context.role} topics={skills ?? []} />;
+  return <DrillClient prepContextId={context.id} company={context.company} role={context.role} topics={skills ?? []} authenticated={Boolean(context.user_id)} />;
 }

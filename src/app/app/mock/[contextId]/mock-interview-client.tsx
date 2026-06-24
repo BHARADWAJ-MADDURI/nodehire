@@ -9,11 +9,13 @@ import { DiagramCanvas, type DiagramCanvasRef } from "@/components/diagram-canva
 import { Textarea } from "@/components/ui/textarea";
 import { useSpeech } from "@/hooks/use-speech";
 import type { EvaluationResult } from "@/lib/evaluation/evaluate-answer";
+import { getSessionProviderHeaders } from "@/lib/providers/client";
+import { ProviderConnect } from "@/components/provider-connect";
 
 type Question = { sessionQuestionId: string; question_text: string; answer_type: "text" | "code" | "diagram"; ideal_answer: string | null; runtimeContext: { framing: string } };
 type ReportItem = { question: string; score: number | null; feedback: string };
 
-export function MockInterviewClient({ prepContextId, company, role }: { prepContextId: string; company: string; role: string }) {
+export function MockInterviewClient({ prepContextId, company, role, authenticated }: { prepContextId: string; company: string; role: string; authenticated: boolean }) {
   const [sessionId, setSessionId] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
@@ -23,6 +25,7 @@ export function MockInterviewClient({ prepContextId, company, role }: { prepCont
   const [complete, setComplete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [needProvider, setNeedProvider] = useState(false);
   const diagramRef = useRef<DiagramCanvasRef>(null);
   const speech = useSpeech(setAnswer);
   const current = questions[index];
@@ -40,16 +43,17 @@ export function MockInterviewClient({ prepContextId, company, role }: { prepCont
     if (current.answer_type === "diagram" && !answerImage) return setError("Add labeled components before submitting your diagram.");
     if (current.answer_type !== "diagram" && !answer.trim()) return;
     setBusy(true); setError(""); speech.stopListening();
-    const response = await fetch("/api/evaluate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId, sessionQuestionId: current.sessionQuestionId, answer, answerImage }) });
+    const response = await fetch("/api/evaluate", { method: "POST", headers: { "Content-Type": "application/json", ...getSessionProviderHeaders() }, body: JSON.stringify({ sessionId, sessionQuestionId: current.sessionQuestionId, answer, answerImage }) });
     const result = await response.json();
     if (response.ok) {
       const item = { question: current.question_text, score: result.evaluation?.score ?? null, feedback: result.evaluation?.feedback ?? result.message ?? "Self-grade against the ideal approach." };
       setEvaluation(result.evaluation ?? null); setReport((items) => [...items, item]);
+      setNeedProvider(result.code === "BYOK_REQUIRED" || result.code === "CEILING_REACHED");
       if (index === questions.length - 1) setComplete(true);
     } else setError(result.error || "Could not evaluate this answer.");
     setBusy(false);
   }
-  function next() { setIndex((value) => value + 1); setAnswer(""); setEvaluation(null); setError(""); }
+  function next() { setIndex((value) => value + 1); setAnswer(""); setEvaluation(null); setNeedProvider(false); setError(""); }
 
   if (complete) {
     const scores = report.flatMap((item) => item.score === null ? [] : [item.score]);
@@ -58,5 +62,5 @@ export function MockInterviewClient({ prepContextId, company, role }: { prepCont
   }
   if (!current) return <main><div><p className="text-sm font-medium text-primary">Mock interview</p><h1 className="mt-2 text-3xl font-semibold">{role} at {company}</h1><p className="mt-2 text-muted-foreground">A multi-topic round using your selected ontology leaves and company context.</p></div><Card className="glass-panel mt-8 border-0"><CardContent className="flex flex-col items-center py-14 text-center"><Play className="size-9 text-primary"/><h2 className="mt-4 text-xl font-semibold">Ready for a realistic round?</h2><p className="mt-2 text-sm text-muted-foreground">Questions are cache-first; every response uses the shared evaluator.</p><Button className="mt-6" onClick={start} disabled={busy}>{busy ? <Loader2 className="animate-spin"/> : <Play/>}Start mock interview</Button>{error && <p className="mt-3 text-sm text-destructive">{error}</p>}</CardContent></Card></main>;
 
-  return <main className="space-y-6"><div className="flex items-center justify-between"><div><p className="text-sm text-primary">Question {index + 1} of {questions.length}</p><h1 className="mt-1 text-2xl font-semibold">Mock interview</h1></div><Badge>{current.answer_type}</Badge></div><div className="h-2 rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((index + 1) / questions.length) * 100}%` }}/></div><Card className="glass-panel border-0"><CardHeader><CardTitle className="text-xl leading-8">{current.question_text}</CardTitle><CardDescription>{current.runtimeContext.framing}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex gap-2">{speech.speechSupported && <Button variant="outline" size="sm" onClick={() => speech.speak(current.question_text)}><Volume2/>Speak question</Button>}{current.answer_type === "text" && speech.browserSupported && (speech.isListening ? <Button variant="destructive" size="sm" onClick={speech.stopListening}><MicOff/>Stop</Button> : <Button variant="outline" size="sm" onClick={() => speech.startListening(answer)}><Mic/>Answer with voice</Button>)}</div>{current.answer_type === "diagram" ? <DiagramCanvas key={index} ref={diagramRef}/> : <Textarea value={answer} onChange={(event) => setAnswer(event.target.value)} className={`min-h-64 ${current.answer_type === "code" ? "font-mono text-sm" : ""}`} placeholder="Give your interview answer…"/>}{evaluation ? <div className="rounded-xl border bg-primary/5 p-4 text-sm"><strong>{evaluation.score}/100.</strong> {evaluation.feedback}</div> : <Button onClick={submit} disabled={busy}>{busy ? <Loader2 className="animate-spin"/> : "Submit answer"}</Button>}{(evaluation || report.length === index + 1) && <Button onClick={next} disabled={index >= questions.length - 1}>Next question</Button>}{error && <p className="text-sm text-destructive">{error}</p>}</CardContent></Card></main>;
+  return <main className="space-y-6"><div className="flex items-center justify-between"><div><p className="text-sm text-primary">Question {index + 1} of {questions.length}</p><h1 className="mt-1 text-2xl font-semibold">Mock interview</h1></div><Badge>{current.answer_type}</Badge></div><div className="h-2 rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((index + 1) / questions.length) * 100}%` }}/></div><Card className="glass-panel border-0"><CardHeader><CardTitle className="text-xl leading-8">{current.question_text}</CardTitle><CardDescription>{current.runtimeContext.framing}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex gap-2">{speech.speechSupported && <Button variant="outline" size="sm" onClick={() => speech.speak(current.question_text)}><Volume2/>Speak question</Button>}{current.answer_type === "text" && speech.browserSupported && (speech.isListening ? <Button variant="destructive" size="sm" onClick={speech.stopListening}><MicOff/>Stop</Button> : <Button variant="outline" size="sm" onClick={() => speech.startListening(answer)}><Mic/>Answer with voice</Button>)}</div>{current.answer_type === "diagram" ? <DiagramCanvas key={index} ref={diagramRef}/> : <Textarea value={answer} onChange={(event) => setAnswer(event.target.value)} className={`min-h-64 ${current.answer_type === "code" ? "font-mono text-sm" : ""}`} placeholder="Give your interview answer…"/>}{evaluation ? <div className="rounded-xl border bg-primary/5 p-4 text-sm"><strong>{evaluation.score}/100.</strong> {evaluation.feedback}</div> : !needProvider && <Button onClick={submit} disabled={busy}>{busy ? <Loader2 className="animate-spin"/> : "Submit answer"}</Button>}{needProvider && <div className="rounded-xl border bg-background/70 p-4"><h3 className="mb-3 font-semibold">Keep going — connect a free key</h3><ProviderConnect authenticated={authenticated} compact /></div>}{(evaluation || report.length === index + 1) && <Button onClick={next} disabled={index >= questions.length - 1}>Next question</Button>}{error && <p className="text-sm text-destructive">{error}</p>}</CardContent></Card></main>;
 }
