@@ -167,6 +167,30 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["question_bank"]["Insert"]> & { hit_count?: number };
         Relationships: [];
       };
+      practice_sessions: {
+        Row: { id: string; prep_context_id: string; user_id: string | null; anonymous_session_id: string | null; mode: string; status: string; difficulty: string; created_at: string; completed_at: string | null };
+        Insert: { id?: string; prep_context_id: string; user_id?: string | null; anonymous_session_id?: string | null; mode?: string; status?: string; difficulty?: string; completed_at?: string | null };
+        Update: Partial<Database["public"]["Tables"]["practice_sessions"]["Insert"]>;
+        Relationships: [];
+      };
+      session_questions: {
+        Row: { id: string; session_id: string; question_id: string; ontology_leaf_id: string; sequence_number: number; answer_text: string | null; prompt_override: string | null; score: number | null; evaluation: Json | null; is_follow_up: boolean; created_at: string; answered_at: string | null };
+        Insert: { id?: string; session_id: string; question_id: string; ontology_leaf_id: string; sequence_number: number; answer_text?: string | null; prompt_override?: string | null; score?: number | null; evaluation?: Json | null; is_follow_up?: boolean; answered_at?: string | null };
+        Update: Partial<Database["public"]["Tables"]["session_questions"]["Insert"]>;
+        Relationships: [];
+      };
+      skill_mastery: {
+        Row: { id: string; user_id: string | null; anonymous_session_id: string | null; ontology_leaf_id: string; mastery_score: number; evidence_count: number; updated_at: string };
+        Insert: { id?: string; user_id?: string | null; anonymous_session_id?: string | null; ontology_leaf_id: string; mastery_score?: number; evidence_count?: number; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["skill_mastery"]["Insert"]>;
+        Relationships: [];
+      };
+      weakness_profiles: {
+        Row: { id: string; user_id: string | null; anonymous_session_id: string | null; ontology_leaf_id: string; weakness_score: number; evidence_count: number; updated_at: string };
+        Insert: { id?: string; user_id?: string | null; anonymous_session_id?: string | null; ontology_leaf_id: string; weakness_score?: number; evidence_count?: number; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["weakness_profiles"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
