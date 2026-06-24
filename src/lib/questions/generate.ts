@@ -1,0 +1,39 @@
+import { ONTOLOGY } from "@/lib/topic-map/ontology";
+import type { GeneratedQuestion, QuestionDifficulty, QuestionMode } from "./types";
+
+const prompts: Record<string, string> = {
+  "api-testing": "How would you design a test strategy for an API that creates and updates financial transactions?",
+  "automation-architecture": "How would you structure a maintainable automation framework used by several engineering teams?",
+  "ci-cd-testing": "How would you design quality gates that are fast enough for CI while still protecting a production release?",
+  "payments-testing": "What failure modes would you test in an idempotent payment authorization and reconciliation flow?",
+  "security-testing": "How would you test authorization boundaries and abuse cases for a sensitive service?",
+  "behavioral-leadership": "Tell me about a time you raised engineering quality without having direct authority over the team.",
+  "system-design": "Design a reliable service for a workload that must scale while preserving data consistency.",
+  "data-pipelines": "How would you design and operate a reliable pipeline when upstream data can arrive late or malformed?",
+  "sql": "How would you diagnose and improve a slow analytical SQL query on a large dataset?",
+  "requirements": "How do you turn an ambiguous business request into testable requirements and acceptance criteria?",
+};
+
+export function generateQuestion(input: {
+  ontologyLeafId: string;
+  mode: QuestionMode;
+  difficulty: QuestionDifficulty;
+}): GeneratedQuestion {
+  const skill = ONTOLOGY.find((item) => item.id === input.ontologyLeafId);
+  if (!skill) throw new Error("Unknown ontology skill.");
+  const base = prompts[skill.id] ?? `How would you approach a realistic ${skill.name} problem and explain your tradeoffs?`;
+  const depth = input.difficulty === "easy"
+    ? "Start with the fundamentals and one concrete example."
+    : input.difficulty === "hard"
+      ? "Include failure modes, tradeoffs, observability, and how your approach changes at scale."
+      : "Explain the major tradeoffs and how you would validate the outcome.";
+  const modeLead = input.mode === "mock" ? "In an interview-style response, " : "For this focused drill, ";
+  return {
+    questionText: `${modeLead}${base} ${depth}`,
+    evaluationRubric: {
+      dimensions: ["technical accuracy", "structured reasoning", "tradeoff awareness", "concrete evidence"],
+      strongAnswerSignals: ["states assumptions", "covers risks", "explains validation", "communicates decisions clearly"],
+    },
+    followUpHints: ["Ask for a concrete example.", "Probe the largest failure mode.", "Ask what they would measure."],
+  };
+}
