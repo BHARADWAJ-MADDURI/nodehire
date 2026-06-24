@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     return response;
   } catch {
     return NextResponse.json(
-      { error: "Demo mode is temporarily unavailable." },
+      { error: "Guest access is temporarily unavailable." },
       { status: 503 },
     );
   }

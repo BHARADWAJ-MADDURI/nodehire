@@ -64,7 +64,7 @@ export async function savePrepContext(
     const admin = createSupabaseAdminClient();
     if (!id) {
       const { count } = await admin.from("prep_contexts").select("id", { count: "exact", head: true }).eq("anonymous_session_id", currentOwner.id);
-      if ((count ?? 0) >= 3) return { error: "Demo sessions can save up to three prep contexts." };
+      if ((count ?? 0) >= 3) return { error: "Guest sessions can save up to three prep contexts." };
     }
     const query = id
       ? admin.from("prep_contexts").update(values).eq("id", id).eq("anonymous_session_id", currentOwner.id)

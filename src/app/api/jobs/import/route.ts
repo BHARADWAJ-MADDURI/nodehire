@@ -8,7 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const schema = z.object({ url: z.url().max(2_000) });
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient(); const { data } = await supabase.auth.getUser();
-  if (!data.user && !await getAnonymousSession()) return NextResponse.json({ error: "Start a demo or sign in first." }, { status: 401 });
+  if (!data.user && !await getAnonymousSession()) return NextResponse.json({ error: "Start a free guest session or sign in first." }, { status: 401 });
   const key = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   const limit = consumeRateLimit(`job-import:${key}`, 8, 60_000); if (!limit.allowed) return NextResponse.json({ error: "Please wait before importing another link." }, { status: 429 });
   const parsed = schema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: "Enter a valid public job URL." }, { status: 400 });
