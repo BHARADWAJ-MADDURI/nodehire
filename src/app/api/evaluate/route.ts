@@ -4,6 +4,7 @@ import { evaluateAnswer } from "@/lib/evaluation/evaluate-answer";
 import { updatePracticeSignals } from "@/lib/evaluation/update-signals";
 import { getOwnedPrepContext } from "@/lib/owned-prep-context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { idealAnswerFor } from "@/lib/questions/generate";
 
 const schema = z.object({ sessionId: z.uuid(), sessionQuestionId: z.uuid(), answer: z.string().max(20_000).optional(), answerImage: z.string().max(3_000_000).optional() }).refine((value) => value.answer?.trim() || value.answerImage, "Answer is required.");
 
@@ -19,9 +20,10 @@ export async function POST(request: Request) {
   if (!item || item.answered_at) return NextResponse.json({ error: "Question is unavailable or already answered." }, { status: 409 });
   const { data: skill } = await admin.from("ontology_skills").select("name").eq("id", item.ontology_leaf_id).single();
   const { data: question } = await admin.from("question_bank").select("answer_type, ideal_answer").eq("id", item.question_id).single();
+  const idealAnswer = idealAnswerFor(item.ontology_leaf_id, skill?.name);
   if (question?.answer_type === "diagram") {
     if (!parsed.data.answerImage?.startsWith("data:image/png;base64,")) return NextResponse.json({ error: "Couldn't read the diagram — try adding labels or more detail." }, { status: 400 });
-    return NextResponse.json({ ok: true, evaluationSkipped: true, message: "Live vision evaluation needs an available AI tier. Compare your diagram with the ideal approach for this turn.", idealAnswer: question.ideal_answer });
+    return NextResponse.json({ ok: true, evaluationSkipped: true, message: "Live vision evaluation needs an available AI tier. Compare your diagram with the ideal approach for this turn.", idealAnswer });
   }
   const answer = parsed.data.answer?.trim() ?? "";
   const evaluation = evaluateAnswer(answer, skill?.name ?? "technical", question?.answer_type === "code" ? "code" : "text");
@@ -43,5 +45,5 @@ export async function POST(request: Request) {
       sessionComplete = true;
     }
   }
-  return NextResponse.json({ ok: true, evaluation, followUp, sessionComplete });
+  return NextResponse.json({ ok: true, evaluation, followUp, sessionComplete, submittedAnswer: answer, idealAnswer });
 }

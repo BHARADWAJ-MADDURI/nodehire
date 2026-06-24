@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { evaluateAnswer } from "./evaluate-answer";
 
 describe("evaluateAnswer", () => {
+  it("does not invent strengths when the candidate says they do not know", () => {
+    const result = evaluateAnswer("I would like to answer in five points, but I don't know the answer.", "API Design");
+    expect(result.score).toBe(0);
+    expect(result.strengths).toEqual([]);
+    expect(result.feedback).toContain("do not know");
+  });
   it("creates a follow-up for a weak answer", () => {
     const result = evaluateAnswer("I would test it.", "API Testing");
     expect(result.needsFollowUp).toBe(true);

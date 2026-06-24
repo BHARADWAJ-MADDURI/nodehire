@@ -14,6 +14,19 @@ const prompts: Record<string, string> = {
   "requirements": "How do you turn an ambiguous business request into testable requirements and acceptance criteria?",
 };
 
+const idealAnswers: Record<string, string> = {
+  "api-design": "Start by clarifying consumers, operations, SLAs, and failure semantics. Define resource-oriented contracts, validation, consistent errors, authentication and authorization, idempotency for writes, pagination, and versioning. Protect dependencies with timeouts and retries, add correlation IDs, metrics and tracing, document the contract, and validate it with consumer-driven contract, integration, load, and security tests.",
+  "api-testing": "Build a risk-based pyramid: contract and schema validation, positive and negative functional paths, authorization boundaries, idempotency, concurrency, dependency failures, and data integrity. Automate stable service-level checks in CI, isolate test data, monitor latency and errors, and reserve a smaller set of end-to-end tests for critical flows.",
+  "automation-architecture": "Separate test intent from tooling with domain-focused layers, reusable fixtures, deterministic data builders, and clear component boundaries. Optimize for reliable parallel execution, actionable reporting, versioned dependencies, CI selection, and ownership. Measure flake rate, runtime, defect detection, and maintenance cost.",
+  "system-design": "Clarify scale, latency, availability, consistency, security, and cost requirements. Draw clients, gateways, services, storage, caches, queues, and observability boundaries. Explain data flow, partitioning, failure recovery, bottlenecks, tradeoffs, capacity estimates, and how the design evolves as traffic grows.",
+  "data-structures": "Explain the approach before coding, choose data structures deliberately, state invariants, handle empty and boundary inputs, and walk through an example. Conclude with estimated time and space complexity and the tradeoff versus a simpler alternative.",
+  "behavioral-leadership": "Use a concise STAR structure: establish the stakes and your responsibility, describe the specific influence and decisions you personally drove, explain conflict or tradeoffs, and quantify the result. Close with what you learned and would repeat or change.",
+};
+
+export function idealAnswerFor(ontologyLeafId: string, skillName = "this skill") {
+  return idealAnswers[ontologyLeafId] ?? `A strong ${skillName} answer states assumptions, presents a structured approach, covers important tradeoffs and failure modes, gives a concrete example, and explains how the outcome would be validated.`;
+}
+
 export function generateQuestion(input: {
   ontologyLeafId: string;
   mode: QuestionMode;
@@ -37,7 +50,7 @@ export function generateQuestion(input: {
   return {
     answerType,
     questionText: `${modeLead}${base} ${depth}`,
-    idealAnswer: `A strong ${skill.name} answer states assumptions, presents a structured approach, covers important tradeoffs and failure modes, and explains how the outcome would be validated.`,
+    idealAnswer: idealAnswerFor(skill.id, skill.name),
     evaluationRubric: {
       dimensions,
       strongAnswerSignals: ["states assumptions", "covers risks", "explains validation", "communicates decisions clearly"],
