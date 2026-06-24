@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const answer = parsed.data.answer?.trim() ?? "";
   if (question?.answer_type === "diagram" && !parsed.data.answerImage?.startsWith("data:image/png;base64,")) return NextResponse.json({ error: "Couldn't read the diagram — try adding labels or more detail." }, { status: 400 });
   const credential = await resolveProviderCredential(request, session.user_id);
-  if (!credential) return NextResponse.json({ ok: true, evaluationSkipped: true, code: "BYOK_REQUIRED", message: "Keep going — connect a free key for live evaluation, or self-grade this turn.", submittedAnswer: answer || "Diagram submitted", idealAnswer });
+  if (!credential) return NextResponse.json({ ok: true, evaluationSkipped: true, code: "BYOK_REQUIRED", message: "Connect your own API key for live AI evaluation if you choose; your provider's pricing and usage limits apply.", submittedAnswer: answer || "Diagram submitted", idealAnswer });
   let providerResult;
   try {
     providerResult = await evaluateWithProvider({ provider: credential.provider, apiKey: credential.apiKey, source: credential.source, question: item.prompt_override ?? question?.question_text ?? "Interview question", answer, imageDataUrl: parsed.data.answerImage, rubric: question?.evaluation_rubric, answerType: question?.answer_type ?? "text" });
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     if (error instanceof ProviderError && credential.source === "byok") return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
     return NextResponse.json({ ok: true, evaluationSkipped: true, code: error instanceof ProviderError ? error.code : "PROVIDER_UNAVAILABLE", message: "Live evaluation is unavailable. Self-grade against the model answer for this turn.", submittedAnswer: answer || "Diagram submitted", idealAnswer });
   }
-  if (providerResult.ceilingReached) return NextResponse.json({ ok: true, evaluationSkipped: true, code: "CEILING_REACHED", message: "Free AI questions reset at 00:00 UTC — connect your own free Gemini key to continue now, or check back after reset.", submittedAnswer: answer || "Diagram submitted", idealAnswer });
+  if (providerResult.ceilingReached) return NextResponse.json({ ok: true, evaluationSkipped: true, code: "CEILING_REACHED", message: "App-provided AI access resets at 00:00 UTC. You may connect your own API key now; your provider's pricing and usage limits apply.", submittedAnswer: answer || "Diagram submitted", idealAnswer });
   if (!providerResult.result.readable) return NextResponse.json({ ok: true, evaluationSkipped: true, code: "UNREADABLE_DIAGRAM", message: "Couldn't read the diagram — try adding labels or more detail. Your attempt was not scored.", submittedAnswer: "Diagram submitted", idealAnswer });
   const result = providerResult.result;
   const evaluation = { score: Math.round(result.score), level: result.score >= 80 ? "strong" as const : result.score >= 55 ? "developing" as const : "needs-work" as const, strengths: result.strengths, gaps: result.gaps, feedback: result.feedback, needsFollowUp: result.score < 70, followUpPrompt: result.score < 70 ? `Try again after reviewing the model answer: explain the most important ${skill?.name ?? "technical"} decision and its tradeoff.` : null, estimatedComplexity: result.estimatedComplexity, notice: question?.answer_type === "code" ? "AI-assessed, not run against test cases. Complexity is estimated, not verified." : undefined, betterInterviewAnswer: result.betterInterviewAnswer };
