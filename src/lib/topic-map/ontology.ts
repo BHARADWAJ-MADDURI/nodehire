@@ -6,10 +6,37 @@ export type OntologySkill = {
   keywords: string[];
   roleFamilies: string[];
   baseWeight: number;
+  parentId?: string;
 };
+
+export type OntologyBranch = {
+  id: string;
+  name: string;
+  domain: string;
+  description: string;
+};
+
+export const ONTOLOGY_BRANCHES: OntologyBranch[] = [
+  { id: "oop", name: "OOP", domain: "Engineering", description: "Object-oriented design principles and patterns." },
+  { id: "react", name: "React", domain: "Frontend", description: "Component behavior, state, hooks, and rendering." },
+  { id: "javascript-typescript", name: "JavaScript/TypeScript", domain: "Engineering", description: "JavaScript runtime behavior and TypeScript type safety." },
+];
 
 export const ONTOLOGY: OntologySkill[] = [
   { id: "programming", name: "Programming Fundamentals", domain: "Engineering", description: "Language fluency, clean code, debugging, and maintainability.", keywords: ["java", "python", "javascript", "typescript", "c#", "coding", "debug"], roleFamilies: ["software"], baseWeight: 0.55 },
+  { id: "oop-encapsulation", name: "Encapsulation", domain: "OOP", description: "Protecting invariants and controlling state mutation.", keywords: ["oop", "object oriented", "encapsulation", "invariant"], roleFamilies: ["software", "quality"], baseWeight: 0.48, parentId: "oop" },
+  { id: "oop-polymorphism", name: "Polymorphism", domain: "OOP", description: "Substitutability and behavior through stable abstractions.", keywords: ["oop", "polymorphism", "interface", "abstract class"], roleFamilies: ["software", "quality"], baseWeight: 0.46, parentId: "oop" },
+  { id: "oop-solid", name: "SOLID Principles", domain: "OOP", description: "Responsibility, extensibility, substitution, interfaces, and dependency inversion.", keywords: ["solid", "single responsibility", "dependency inversion"], roleFamilies: ["software", "quality"], baseWeight: 0.5, parentId: "oop" },
+  { id: "oop-composition-inheritance", name: "Composition vs Inheritance", domain: "OOP", description: "Choosing reuse and extension mechanisms deliberately.", keywords: ["composition", "inheritance", "is-a", "has-a"], roleFamilies: ["software", "quality"], baseWeight: 0.44, parentId: "oop" },
+  { id: "oop-design-patterns", name: "Design Patterns", domain: "OOP", description: "Applying reusable collaboration patterns without over-engineering.", keywords: ["design pattern", "strategy pattern", "factory", "observer"], roleFamilies: ["software", "quality"], baseWeight: 0.48, parentId: "oop" },
+  { id: "react-lifecycle", name: "Component Lifecycle", domain: "React", description: "Mount, update, cleanup, and effect behavior.", keywords: ["react", "component lifecycle", "mount", "cleanup"], roleFamilies: ["software"], baseWeight: 0.48, parentId: "react" },
+  { id: "react-hooks", name: "Hooks", domain: "React", description: "useState, useEffect, and reusable custom hooks.", keywords: ["react", "hook", "usestate", "useeffect", "custom hook"], roleFamilies: ["software"], baseWeight: 0.52, parentId: "react" },
+  { id: "react-state-management", name: "State Management", domain: "React", description: "Local, shared, server, and application state boundaries.", keywords: ["react", "state management", "context", "redux", "zustand"], roleFamilies: ["software"], baseWeight: 0.5, parentId: "react" },
+  { id: "react-rendering-performance", name: "Rendering & Performance", domain: "React", description: "Re-renders, memoization, profiling, and responsive interfaces.", keywords: ["react", "usememo", "usecallback", "memo", "render performance"], roleFamilies: ["software"], baseWeight: 0.46, parentId: "react" },
+  { id: "js-closures-scope", name: "Closures & Scope", domain: "JavaScript/TypeScript", description: "Lexical scope, captured values, and lifetime.", keywords: ["javascript", "typescript", "closure", "scope", "hoisting"], roleFamilies: ["software", "quality"], baseWeight: 0.46, parentId: "javascript-typescript" },
+  { id: "js-prototypes-inheritance", name: "Prototypes & Inheritance", domain: "JavaScript/TypeScript", description: "Prototype lookup, delegation, and instance behavior.", keywords: ["javascript", "prototype", "prototypal inheritance"], roleFamilies: ["software"], baseWeight: 0.42, parentId: "javascript-typescript" },
+  { id: "js-async-event-loop", name: "Async / Event Loop", domain: "JavaScript/TypeScript", description: "Promises, tasks, microtasks, and asynchronous control flow.", keywords: ["javascript", "typescript", "async", "promise", "event loop", "microtask"], roleFamilies: ["software", "quality"], baseWeight: 0.52, parentId: "javascript-typescript" },
+  { id: "ts-type-system", name: "TypeScript Type System", domain: "JavaScript/TypeScript", description: "Generics, narrowing, utility types, and safe API modeling.", keywords: ["typescript", "generic", "type narrowing", "utility type"], roleFamilies: ["software", "quality"], baseWeight: 0.5, parentId: "javascript-typescript" },
   { id: "data-structures", name: "Data Structures & Algorithms", domain: "Engineering", description: "Complexity, algorithms, and problem-solving tradeoffs.", keywords: ["algorithm", "data structure", "complexity", "leetcode"], roleFamilies: ["software"], baseWeight: 0.45 },
   { id: "system-design", name: "System Design", domain: "Architecture", description: "Scalable, reliable, and maintainable distributed systems.", keywords: ["architecture", "distributed", "scalable", "microservice", "high availability"], roleFamilies: ["software", "data"], baseWeight: 0.55 },
   { id: "api-design", name: "API Design", domain: "Architecture", description: "REST, event contracts, versioning, and service boundaries.", keywords: ["api", "rest", "graphql", "service", "contract"], roleFamilies: ["software"], baseWeight: 0.5 },
