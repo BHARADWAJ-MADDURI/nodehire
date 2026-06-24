@@ -57,6 +57,70 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["prep_contexts"]["Insert"]>;
         Relationships: [];
       };
+      ontology_skills: {
+        Row: {
+          created_at: string;
+          description: string;
+          domain: string;
+          id: string;
+          name: string;
+          parent_id: string | null;
+        };
+        Insert: {
+          description: string;
+          domain: string;
+          id: string;
+          name: string;
+          parent_id?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["ontology_skills"]["Insert"]>;
+        Relationships: [];
+      };
+      topic_trees: {
+        Row: {
+          created_at: string;
+          generated_by: string;
+          id: string;
+          prep_context_id: string;
+          recommended_path: string[];
+          signal_summary: Json;
+          tree: Json;
+          updated_at: string;
+        };
+        Insert: {
+          generated_by?: string;
+          id?: string;
+          prep_context_id: string;
+          recommended_path?: string[];
+          signal_summary?: Json;
+          tree: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["topic_trees"]["Insert"]>;
+        Relationships: [];
+      };
+      topic_skill_mappings: {
+        Row: {
+          created_at: string;
+          id: string;
+          ontology_leaf_id: string;
+          rationale: string;
+          selected: boolean;
+          topic_key: string;
+          topic_tree_id: string;
+          weight: number;
+        };
+        Insert: {
+          id?: string;
+          ontology_leaf_id: string;
+          rationale: string;
+          selected?: boolean;
+          topic_key: string;
+          topic_tree_id: string;
+          weight: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["topic_skill_mappings"]["Insert"]>;
+        Relationships: [];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
