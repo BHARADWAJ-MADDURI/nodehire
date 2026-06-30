@@ -53,6 +53,7 @@ describe("analyzePrepContext", () => {
     const ids = result.branches.flatMap((branch) => branch.topics.map((topic) => topic.id));
     expect(result.roleFamily).toBe("business");
     expect(ids).toEqual(expect.arrayContaining(["enterprise-risk-frameworks", "rcsa-controls", "risk-metrics-reporting", "audit-assurance", "compliance-program-management", "risk-stakeholder-governance"]));
+    expect(result.branches.flatMap((branch) => branch.topics).every((topic) => topic.domain === "Risk & Compliance")).toBe(true);
     expect(ids).not.toContain("system-design");
     expect(ids).not.toContain("security");
   });

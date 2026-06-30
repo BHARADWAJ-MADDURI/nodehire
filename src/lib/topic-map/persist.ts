@@ -3,7 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/types/database";
 import { analyzePrepContext, type TopicAnalysis } from "./analyze";
 
-export const TOPIC_MAP_VERSION = "ontology-v3";
+export const TOPIC_MAP_VERSION = "ontology-v4";
 type PrepContext = Database["public"]["Tables"]["prep_contexts"]["Row"];
 
 export async function persistTopicAnalysis(context: PrepContext, analysis = analyzePrepContext({ company: context.company, role: context.role, seniority: context.seniority, jobDescription: context.job_description })) {

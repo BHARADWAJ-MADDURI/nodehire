@@ -55,9 +55,14 @@ export function analyzePrepContext(input: {
     .sort((a, b) => b.score - a.score)
     .slice(0, 8);
 
+  const grcMatches = scored.filter((item) => item.skill.domain === "Risk & Compliance");
+  const focusedScored = /compliance|enterprise risk|risk management|audit|governance/.test(haystack) && grcMatches.length >= 4
+    ? grcMatches
+    : scored;
+
   const fallback = ONTOLOGY.filter((skill) => skill.roleFamilies.includes(family)).slice(0, 6);
-  const candidates = scored.length >= 5
-    ? scored
+  const candidates = focusedScored.length >= 5
+    ? focusedScored
     : fallback.map((skill) => ({ skill, matches: evidence(skill, haystack), score: skill.baseWeight * 2 }));
   const total = candidates.reduce((sum, item) => sum + item.score, 0);
   const leaves = candidates.map(({ skill, matches, score }) => ({
@@ -81,7 +86,7 @@ export function analyzePrepContext(input: {
     };
   }).sort((a, b) => b.weight - a.weight);
 
-  const signals = Array.from(new Set(scored.flatMap((item) => item.matches))).slice(0, 10);
+  const signals = Array.from(new Set(focusedScored.flatMap((item) => item.matches))).slice(0, 10);
   return {
     roleFamily: family,
     seniority: seniority.replace(/^./, (value) => value.toUpperCase()),
