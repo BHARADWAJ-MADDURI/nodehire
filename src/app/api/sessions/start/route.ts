@@ -17,7 +17,12 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient();
   const { data: skill } = await admin.from("ontology_skills").select("name").eq("id", parsed.data.ontologyLeafId).maybeSingle();
   if (!skill) return NextResponse.json({ error: "Topic not found." }, { status: 404 });
-  const prepared = await getCachedOrGenerateQuestion({ ontologyLeafId: parsed.data.ontologyLeafId, mode: "drill", difficulty: parsed.data.difficulty });
+  const { data: previousSessions } = await admin.from("practice_sessions").select("id").eq("prep_context_id", context.id).eq("mode", "drill").order("created_at", { ascending: false }).limit(100);
+  const previousSessionIds = (previousSessions ?? []).map((session) => session.id);
+  const { data: previousQuestions } = previousSessionIds.length
+    ? await admin.from("session_questions").select("question_id").in("session_id", previousSessionIds).eq("ontology_leaf_id", parsed.data.ontologyLeafId).limit(100)
+    : { data: [] as Array<{ question_id: string }> };
+  const prepared = await getCachedOrGenerateQuestion({ ontologyLeafId: parsed.data.ontologyLeafId, mode: "drill", difficulty: parsed.data.difficulty, excludeQuestionIds: (previousQuestions ?? []).map((item) => item.question_id) });
   const { data: session, error } = await admin.from("practice_sessions").insert({
     prep_context_id: context.id,
     user_id: context.user_id,
