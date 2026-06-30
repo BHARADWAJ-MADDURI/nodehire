@@ -36,6 +36,7 @@ export function useSpeech(onTranscript: (value: string) => void) {
     () => false,
   );
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<Recognition | null>(null);
   const baseTextRef = useRef("");
@@ -91,14 +92,27 @@ export function useSpeech(onTranscript: (value: string) => void) {
 
   const speak = useCallback((text: string) => {
     if (!("speechSynthesis" in window)) return;
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = window.speechSynthesis.getVoices().filter((voice) => voice.lang.startsWith("en"));
     utterance.voice = voices.find((voice) => /Google US English|Microsoft.*Natural|Samantha|Ava|Alex/i.test(voice.name)) ?? voices.find((voice) => voice.lang === "en-US") ?? voices[0] ?? null;
     utterance.rate = 0.9;
     utterance.pitch = 1;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
     window.speechSynthesis.speak(utterance);
   }, []);
 
-  return { browserSupported, speechSupported, isListening, error, startListening, stopListening, speak };
+  const stopSpeaking = useCallback(() => {
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
+  }, []);
+
+  return { browserSupported, speechSupported, isListening, isSpeaking, error, startListening, stopListening, speak, stopSpeaking };
 }
