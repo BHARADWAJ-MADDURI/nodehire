@@ -106,6 +106,7 @@ export function useSpeech(onTranscript: (value: string) => void) {
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
     window.speechSynthesis.speak(utterance);
   }, []);
 
