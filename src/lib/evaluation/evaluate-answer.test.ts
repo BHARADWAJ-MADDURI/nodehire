@@ -8,6 +8,12 @@ describe("evaluateAnswer", () => {
     expect(result.strengths).toEqual([]);
     expect(result.feedback).toContain("do not know");
   });
+  it("scores placeholders as zero even when they contain rubric keywords", () => {
+    const result = evaluateAnswer("TEST", "API Design");
+    expect(result.score).toBe(0);
+    expect(result.strengths).toEqual([]);
+    expect(result.feedback).toContain("placeholder");
+  });
   it("creates a follow-up for a weak answer", () => {
     const result = evaluateAnswer("I would test it.", "API Testing");
     expect(result.needsFollowUp).toBe(true);
