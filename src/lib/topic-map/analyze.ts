@@ -22,6 +22,7 @@ export type TopicAnalysis = {
 
 function roleFamily(role: string): TopicAnalysis["roleFamily"] {
   const value = role.toLowerCase();
+  if (/compliance|risk|audit|governance|program manager/.test(value)) return "business";
   if (/sdet|qa|quality|test|automation/.test(value)) return "quality";
   if (/data engineer|analytics engineer|etl|data platform/.test(value)) return "data";
   if (/business analyst|\bba\b|product analyst|systems analyst/.test(value)) return "business";

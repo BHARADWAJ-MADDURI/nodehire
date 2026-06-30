@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { analyzePrepContext, type TopicAnalysis } from "@/lib/topic-map/analyze";
+import { analyzePrepContext } from "@/lib/topic-map/analyze";
+import { persistTopicAnalysis } from "@/lib/topic-map/persist";
 import { getOwnedPrepContext } from "@/lib/owned-prep-context";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/types/database";
 
 const requestSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("analyze").default("analyze"), prepContextId: z.uuid() }),
@@ -66,35 +66,10 @@ export async function POST(request: Request) {
     seniority: context.seniority,
     jobDescription: context.job_description,
   });
-  const { data: tree, error: treeError } = await admin
-    .from("topic_trees")
-    .upsert({
-      prep_context_id: context.id,
-      tree: analysis as unknown as Json,
-      recommended_path: analysis.recommendedPath,
-      signal_summary: {
-        roleFamily: analysis.roleFamily,
-        seniority: analysis.seniority,
-        signals: analysis.signals,
-      },
-      generated_by: "deterministic-v1",
-    }, { onConflict: "prep_context_id" })
-    .select("id")
-    .single();
-  if (treeError || !tree) return NextResponse.json({ error: "Could not save the topic map." }, { status: 500 });
-
-  const leaves = analysis.branches.flatMap((branch) => branch.topics);
-  const { error: deleteError } = await admin.from("topic_skill_mappings").delete().eq("topic_tree_id", tree.id);
-  if (deleteError) return NextResponse.json({ error: "Could not refresh topic mappings." }, { status: 500 });
-  const { error: mappingError } = await admin.from("topic_skill_mappings").insert(leaves.map((leaf) => ({
-    topic_tree_id: tree.id,
-    ontology_leaf_id: leaf.id,
-    topic_key: leaf.id,
-    weight: leaf.weight,
-    selected: true,
-    rationale: leaf.rationale,
-  })));
-  if (mappingError) return NextResponse.json({ error: "Could not save topic mappings." }, { status: 500 });
-
-  return NextResponse.json({ ok: true, topicTreeId: tree.id, analysis: analysis as TopicAnalysis });
+  try {
+    const persisted = await persistTopicAnalysis(context, analysis);
+    return NextResponse.json({ ok: true, topicTreeId: persisted.treeId, analysis: persisted.analysis });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not save the topic map." }, { status: 500 });
+  }
 }

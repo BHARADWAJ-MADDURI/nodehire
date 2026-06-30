@@ -56,6 +56,22 @@ function visibleJobDescription(html: string) {
   return htmlToText(end ? afterHeading.slice(0, end.index) : afterHeading).slice(0, 50_000);
 }
 
+function visibleJobSections(html: string) {
+  const headingPattern = /<h[1-6]\b[^>]*>\s*(minimum qualifications:?|preferred qualifications:?|about the job|responsibilities)\s*<\/h[1-6]>/gi;
+  const headings = [...html.matchAll(headingPattern)];
+  if (headings.length < 2) return "";
+  return headings.map((heading, index) => {
+    const start = (heading.index ?? 0) + heading[0].length;
+    let end = headings[index + 1]?.index ?? html.length;
+    if (index === headings.length - 1) {
+      const tail = html.slice(start);
+      const stop = /(?:Information collected and processed|Google is proud to be|<script\b|<footer\b)/i.exec(tail);
+      if (stop) end = start + stop.index;
+    }
+    return `${heading[1].replace(/:$/, "")}\n${htmlToText(html.slice(start, end))}`;
+  }).join("\n\n").slice(0, 50_000);
+}
+
 export function extractJobPage(html: string, sourceUrl: string) {
   const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   let posting: Record<string, unknown> | null = null;
@@ -67,13 +83,15 @@ export function extractJobPage(html: string, sourceUrl: string) {
   const title = String(posting?.title ?? metaContent(html, "og:title") ?? html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
   const structuredDescription = htmlToText(String(posting?.description ?? ""));
   const visibleDescription = visibleJobDescription(html);
+  const visibleSections = visibleJobSections(html);
   const openGraphDescription = htmlToText(metaContent(html, "og:description"));
   const genericDescription = htmlToText(metaContent(html, "description"));
-  const description = [structuredDescription, visibleDescription, openGraphDescription, genericDescription]
-    .find((candidate) => candidate.length >= 80) ?? "";
+  const description = [structuredDescription, visibleDescription, visibleSections, openGraphDescription, genericDescription]
+    .filter((candidate) => candidate.length >= 80)
+    .sort((left, right) => right.length - left.length)[0] ?? "";
   const siteName = htmlToText(metaContent(html, "og:site_name")).replace(/\.jobs?$/i, "");
   const hostnameCompany = new URL(sourceUrl).hostname.match(/(?:^|\.)(amazon|microsoft|google|netflix|meta)\./i)?.[1];
-  const company = htmlToText(String(organization?.name ?? siteName ?? hostnameCompany ?? ""));
+  const company = htmlToText(String(organization?.name || siteName || hostnameCompany || ""));
   return {
     company: company ? company.replace(/^./, (letter) => letter.toUpperCase()) : "",
     role: htmlToText(title).replace(/\s+(?:[|–-]\s+)?Job ID:.*$/i, "").replace(/\s+[|–-]\s+.*$/, ""),

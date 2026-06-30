@@ -31,4 +31,12 @@ describe("extractJobPage", () => {
     expect(result.role).toBe("Data Engineer");
     expect(result.jobDescription).toContain("reliable data pipelines");
   });
+
+  it("infers Google from the hostname when organization metadata is absent", () => {
+    const html = `<meta property="og:title" content="Program Manager, Enterprise Risk Management (Compliance)"><meta property="og:description" content="Lead enterprise risk assessments and cross-functional compliance programs."><h3>Minimum qualifications:</h3><ul><li>Experience in compliance, auditing, SQL, and risk frameworks.</li></ul><h3>Preferred qualifications:</h3><ul><li>Data analysis and Tableau.</li></ul><h3>About the job</h3><p>Improve enterprise risk accountability through a common governance framework.</p><h3>Responsibilities</h3><ul><li>Implement an enterprise Risk and Control Self-Assessment (RCSA).</li><li>Report risk trends to executive and board audiences.</li></ul><script>footer()</script>`;
+    const result = extractJobPage(html, "https://www.google.com/about/careers/applications/jobs/results/117269136416875206-example");
+    expect(result.company).toBe("Google");
+    expect(result.jobDescription).toContain("Minimum qualifications");
+    expect(result.jobDescription).toContain("RCSA");
+  });
 });

@@ -42,4 +42,18 @@ describe("analyzePrepContext", () => {
     expect(ids).toEqual(expect.arrayContaining(["react-hooks", "react-state-management", "react-rendering-performance", "js-async-event-loop", "ts-type-system"]));
     expect(ids).not.toContain("react");
   });
+
+  it("maps an enterprise compliance program manager to GRC rather than engineering", () => {
+    const result = analyzePrepContext({
+      company: "Google",
+      role: "Program Manager, Enterprise Risk Management (Compliance)",
+      seniority: "Mid",
+      jobDescription: "Implement an enterprise Risk and Control Self-Assessment (RCSA) aligned with regulatory standards. Consult cross-functional stakeholders on risk mitigation and key risk indicators. Provide executive leadership and the board visibility into risk trends, issues, remediation, and resolution status. Coordinate Legal, Finance, and Product. Experience in compliance, risk management, auditing, SQL, and data analysis.",
+    });
+    const ids = result.branches.flatMap((branch) => branch.topics.map((topic) => topic.id));
+    expect(result.roleFamily).toBe("business");
+    expect(ids).toEqual(expect.arrayContaining(["enterprise-risk-frameworks", "rcsa-controls", "risk-metrics-reporting", "audit-assurance", "compliance-program-management", "risk-stakeholder-governance"]));
+    expect(ids).not.toContain("system-design");
+    expect(ids).not.toContain("security");
+  });
 });
