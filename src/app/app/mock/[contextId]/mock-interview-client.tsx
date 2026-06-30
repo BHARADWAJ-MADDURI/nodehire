@@ -11,6 +11,7 @@ import { useSpeech } from "@/hooks/use-speech";
 import type { EvaluationResult } from "@/lib/evaluation/evaluate-answer";
 import { getSessionProviderHeaders } from "@/lib/providers/client";
 import { ProviderConnect } from "@/components/provider-connect";
+import { CodeWorkspace } from "@/components/code-workspace";
 
 type Question = { sessionQuestionId: string; question_text: string; answer_type: "text" | "code" | "diagram"; ideal_answer: string | null; runtimeContext: { framing: string } };
 type ReportItem = { question: string; score: number | null; feedback: string };
@@ -91,7 +92,7 @@ export function MockInterviewClient({ prepContextId, company, role, authenticate
       const item = { question: current.question_text, score: result.evaluation?.score ?? null, feedback: result.evaluation?.feedback ?? result.message ?? "Compare your response with the model approach." };
       setEvaluation(result.evaluation ?? null);
       setReport((items) => [...items, item]);
-      setNeedProvider(result.code === "BYOK_REQUIRED" || result.code === "CEILING_REACHED");
+      setNeedProvider(result.code === "VISION_BYOK_OPTIONAL" || result.code === "BYOK_REQUIRED" || result.code === "CEILING_REACHED");
       if (index === questions.length - 1) setComplete(true);
     } else setError(result.error || "Could not evaluate this answer.");
     setBusy(false);
@@ -151,7 +152,7 @@ export function MockInterviewClient({ prepContextId, company, role, authenticate
       <div className="flex flex-wrap gap-2">{speech.speechSupported && (speech.isSpeaking ? <Button variant="destructive" size="sm" onClick={speech.stopSpeaking}><Square/>Stop question audio</Button> : <Button variant="outline" size="sm" onClick={() => speech.speak(current.question_text)}><Volume2/>Speak question naturally</Button>)}{current.answer_type === "text" && speech.browserSupported && (speech.isListening ? <Button variant="destructive" size="sm" onClick={speech.stopListening}><MicOff/>Stop now</Button> : <Button variant="outline" size="sm" onClick={() => speech.startListening(answer)}><Mic/>Answer with voice</Button>)}</div>
       {current.answer_type === "text" && !speech.browserSupported && <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">Voice input is unavailable in this browser. Text input always remains available; try current Chrome or Edge.</p>}
       {speech.error && <p className="text-sm text-destructive">{speech.error}</p>}
-      {current.answer_type === "diagram" ? <DiagramCanvas key={index} ref={diagramRef}/> : <Textarea value={answer} onChange={(event) => setAnswer(event.target.value)} className={`min-h-64 ${current.answer_type === "code" ? "font-mono text-sm" : ""}`} placeholder="Give your interview answer…"/>}
+      {current.answer_type === "diagram" ? <DiagramCanvas key={index} ref={diagramRef}/> : current.answer_type === "code" ? <CodeWorkspace value={answer} onChange={setAnswer} /> : <Textarea value={answer} onChange={(event) => setAnswer(event.target.value)} className="min-h-64" placeholder="Give your interview answer…"/>}
       {evaluation ? <div className="rounded-xl border bg-primary/5 p-4 text-sm"><strong>{evaluation.score}/100.</strong> {evaluation.feedback}</div> : !needProvider && <Button onClick={submit} disabled={busy}>{busy ? <Loader2 className="animate-spin"/> : "Submit answer"}</Button>}
       {needProvider && <div className="rounded-xl border bg-background/70 p-4"><h3 className="mb-1 font-semibold">Optional: connect your API key for AI feedback</h3><p className="mb-3 text-xs text-muted-foreground">Your provider&apos;s pricing, free tier, and usage limits apply.</p><ProviderConnect authenticated={authenticated} compact /></div>}
       <div className="flex flex-wrap gap-2">{(evaluation || report.length === index + 1) && <Button onClick={next} disabled={index >= questions.length - 1}>Next question</Button>}<Button variant="ghost" onClick={endInterview}>End interview</Button></div>

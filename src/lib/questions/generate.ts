@@ -89,7 +89,8 @@ export function generateQuestion(input: { ontologyLeafId: string; mode: Question
   const additionalConstraint = variantIndex >= interviewAngles.length
     ? `For this variation, assume the program spans ${12 + variantIndex * 3} teams and leadership expects a decision within ${2 + variantIndex % 6} weeks.`
     : "";
-  const answerType = skill.id === "data-structures" ? "code" : skill.id === "system-design" ? "diagram" : "text";
+  const codeSkills = new Set(["programming", "data-structures", "oop-encapsulation", "oop-polymorphism", "oop-solid", "oop-composition-inheritance", "oop-design-patterns", "js-closures-scope", "js-prototypes-inheritance", "js-async-event-loop", "ts-type-system"]);
+  const answerType = codeSkills.has(skill.id) ? "code" : skill.id === "system-design" ? "diagram" : "text";
   const dimensions = answerType === "code"
     ? ["reasoning-based correctness", "estimated time and space complexity", "edge-case awareness", "communication of approach"]
     : answerType === "diagram"
