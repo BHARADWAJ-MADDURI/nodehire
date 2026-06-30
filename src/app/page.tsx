@@ -39,7 +39,7 @@ export default function Home() {
         <nav className="flex items-center gap-1" aria-label="Primary navigation">
           <ThemeToggle />
           <Link href="/login" className={buttonVariants({ variant: "ghost" })}>Sign in</Link>
-          <Button onClick={startGuestSession} disabled={pending}>Start free</Button>
+          <Button onClick={startGuestSession} disabled={pending}>Try NodeHire</Button>
         </nav>
       </header>
       <section className="mx-auto grid max-w-7xl gap-14 px-5 pb-24 pt-16 sm:px-8 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:pt-24">
@@ -47,7 +47,7 @@ export default function Home() {
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-card/60 px-3 py-1.5 text-sm text-muted-foreground"><Sparkles className="size-4 text-primary" />Open-source interview preparation</div>
           <h1 className="text-balance text-5xl font-semibold leading-[1.02] tracking-[-0.045em] sm:text-6xl lg:text-7xl">Turn any job description into a <span className="bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">focused interview plan.</span></h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">NodeHire maps the signals that matter, builds adaptive drills, and shows where your preparation creates the most leverage.</p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row"><Button size="lg" onClick={startGuestSession} disabled={pending} className="h-12">{pending ? "Starting…" : "Start free without signing in"}<ArrowRight /></Button><Link href="/login" className={buttonVariants({ variant: "outline", size: "lg", className: "h-12" })}>Google or magic link</Link></div>
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row"><Button size="lg" onClick={startGuestSession} disabled={pending} className="h-12">{pending ? "Opening…" : "Continue without an account"}<ArrowRight /></Button><Link href="/login" className={buttonVariants({ variant: "outline", size: "lg", className: "h-12" })}>Google or magic link</Link></div>
           {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
           <div className="mt-7 flex flex-wrap gap-4 text-sm text-muted-foreground">{["No credit card", "Passwordless", "Private by design"].map((item) => <span key={item} className="inline-flex items-center gap-1.5"><Check className="size-4 text-emerald-500" />{item}</span>)}</div>
         </motion.div>
