@@ -51,11 +51,16 @@ export async function POST(request: Request) {
     : { data: [] as Array<{ question_id: string }> };
   const excludedQuestionIds = new Set((previousQuestions ?? []).map((item) => item.question_id));
   const prepared: Array<Awaited<ReturnType<typeof getCachedOrGenerateQuestion>>> = [];
-  for (const ontologyLeafId of scheduledLeafIds) {
-    const item = await getCachedOrGenerateQuestion({ ontologyLeafId, mode: "mock", difficulty: parsed.data.difficulty, excludeQuestionIds: [...excludedQuestionIds] });
-    excludedQuestionIds.add(item.question.id);
-    prepared.push(item);
-  }
+  const indexesByLeaf = new Map<string, number[]>();
+  scheduledLeafIds.forEach((leafId, index) => indexesByLeaf.set(leafId, [...(indexesByLeaf.get(leafId) ?? []), index]));
+  await Promise.all([...indexesByLeaf.entries()].map(async ([ontologyLeafId, indexes]) => {
+    const leafExclusions = new Set(excludedQuestionIds);
+    for (const index of indexes) {
+      const item = await getCachedOrGenerateQuestion({ ontologyLeafId, mode: "mock", difficulty: parsed.data.difficulty, excludeQuestionIds: [...leafExclusions] });
+      leafExclusions.add(item.question.id);
+      prepared[index] = item;
+    }
+  }));
 
   const { data: session, error } = await admin.from("practice_sessions").insert({
     prep_context_id: context.id,
