@@ -40,7 +40,7 @@ export function evaluateAnswer(answer: string, topicName: string, answerType: "t
   ].filter((value): value is string => Boolean(value));
   const needsFollowUp = score < 70;
   const complexityMatch = answer.match(/O\s*\([^)]*\)/i)?.[0];
-  const codeNotice = answerType === "code" ? "AI-assessed, not run against test cases. Complexity is estimated, not verified." : undefined;
+  const codeNotice = answerType === "code" ? "Reasoning-based review; code is not run against test cases. Complexity is estimated, not verified." : undefined;
   return {
     score,
     level: score >= 80 ? "strong" : score >= 55 ? "developing" : "needs-work",

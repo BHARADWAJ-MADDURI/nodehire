@@ -7,6 +7,7 @@ import { idealAnswerFor } from "@/lib/questions/generate";
 import { resolveProviderCredential } from "@/lib/providers/credential";
 import { evaluateWithProvider } from "@/lib/providers/evaluate";
 import { ProviderError } from "@/lib/providers/types";
+import { evaluateAnswer, type EvaluationResult } from "@/lib/evaluation/evaluate-answer";
 
 const schema = z.object({ sessionId: z.uuid(), sessionQuestionId: z.uuid(), answer: z.string().max(20_000).optional(), answerImage: z.string().max(3_000_000).optional() }).refine((value) => value.answer?.trim() || value.answerImage, "Answer is required.");
 
@@ -26,18 +27,30 @@ export async function POST(request: Request) {
   const answer = parsed.data.answer?.trim() ?? "";
   if (question?.answer_type === "diagram" && !parsed.data.answerImage?.startsWith("data:image/png;base64,")) return NextResponse.json({ error: "Couldn't read the diagram — try adding labels or more detail." }, { status: 400 });
   const credential = await resolveProviderCredential(request, session.user_id);
-  if (!credential) return NextResponse.json({ ok: true, evaluationSkipped: true, code: "BYOK_REQUIRED", message: "Connect your own API key for live AI evaluation if you choose; your provider's pricing and usage limits apply.", submittedAnswer: answer || "Diagram submitted", idealAnswer });
-  let providerResult;
-  try {
-    providerResult = await evaluateWithProvider({ provider: credential.provider, apiKey: credential.apiKey, source: credential.source, question: item.prompt_override ?? question?.question_text ?? "Interview question", answer, imageDataUrl: parsed.data.answerImage, rubric: question?.evaluation_rubric, answerType: question?.answer_type ?? "text" });
-  } catch (error) {
-    if (error instanceof ProviderError && credential.source === "byok") return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
-    return NextResponse.json({ ok: true, evaluationSkipped: true, code: error instanceof ProviderError ? error.code : "PROVIDER_UNAVAILABLE", message: "Live evaluation is unavailable. Self-grade against the model answer for this turn.", submittedAnswer: answer || "Diagram submitted", idealAnswer });
+  if (!credential && question?.answer_type === "diagram") return NextResponse.json({ ok: true, evaluationSkipped: true, code: "VISION_BYOK_OPTIONAL", message: "Diagram feedback needs a vision-capable AI. Compare with the model approach now, or optionally connect your key for advanced diagram coaching.", submittedAnswer: "Diagram submitted", idealAnswer });
+
+  let evaluation: EvaluationResult;
+  let evaluationMode: "baseline" | "ai" = "baseline";
+  if (!credential) {
+    evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text");
+  } else {
+    try {
+      const providerResult = await evaluateWithProvider({ provider: credential.provider, apiKey: credential.apiKey, source: credential.source, question: item.prompt_override ?? question?.question_text ?? "Interview question", answer, imageDataUrl: parsed.data.answerImage, rubric: question?.evaluation_rubric, answerType: question?.answer_type ?? "text" });
+      if (providerResult.ceilingReached) {
+        evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text");
+      } else if (!providerResult.result.readable) {
+        return NextResponse.json({ ok: true, evaluationSkipped: true, code: "UNREADABLE_DIAGRAM", message: "Couldn't read the diagram — try adding labels or more detail. Your attempt was not scored.", submittedAnswer: "Diagram submitted", idealAnswer });
+      } else {
+        const result = providerResult.result;
+        evaluationMode = "ai";
+        evaluation = { score: Math.round(result.score), level: result.score >= 80 ? "strong" as const : result.score >= 55 ? "developing" as const : "needs-work" as const, strengths: result.strengths, gaps: result.gaps, feedback: result.feedback, needsFollowUp: result.score < 70, followUpPrompt: result.score < 70 ? `Try again after reviewing the model answer: explain the most important ${skill?.name ?? "technical"} decision and its tradeoff.` : null, estimatedComplexity: result.estimatedComplexity, notice: question?.answer_type === "code" ? "AI-assessed, not run against test cases. Complexity is estimated, not verified." : undefined, betterInterviewAnswer: result.betterInterviewAnswer };
+      }
+    } catch (error) {
+      if (error instanceof ProviderError && credential.source === "byok") return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+      if (question?.answer_type === "diagram") return NextResponse.json({ ok: true, evaluationSkipped: true, code: "PROVIDER_UNAVAILABLE", message: "Diagram evaluation is temporarily unavailable. Compare with the model approach for this turn.", submittedAnswer: "Diagram submitted", idealAnswer });
+      evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text");
+    }
   }
-  if (providerResult.ceilingReached) return NextResponse.json({ ok: true, evaluationSkipped: true, code: "CEILING_REACHED", message: "App-provided AI access resets at 00:00 UTC. You may connect your own API key now; your provider's pricing and usage limits apply.", submittedAnswer: answer || "Diagram submitted", idealAnswer });
-  if (!providerResult.result.readable) return NextResponse.json({ ok: true, evaluationSkipped: true, code: "UNREADABLE_DIAGRAM", message: "Couldn't read the diagram — try adding labels or more detail. Your attempt was not scored.", submittedAnswer: "Diagram submitted", idealAnswer });
-  const result = providerResult.result;
-  const evaluation = { score: Math.round(result.score), level: result.score >= 80 ? "strong" as const : result.score >= 55 ? "developing" as const : "needs-work" as const, strengths: result.strengths, gaps: result.gaps, feedback: result.feedback, needsFollowUp: result.score < 70, followUpPrompt: result.score < 70 ? `Try again after reviewing the model answer: explain the most important ${skill?.name ?? "technical"} decision and its tradeoff.` : null, estimatedComplexity: result.estimatedComplexity, notice: question?.answer_type === "code" ? "AI-assessed, not run against test cases. Complexity is estimated, not verified." : undefined, betterInterviewAnswer: result.betterInterviewAnswer };
   await admin.from("session_questions").update({ answer_text: answer, score: evaluation.score, evaluation, answered_at: new Date().toISOString() }).eq("id", item.id);
   await updatePracticeSignals({ userId: session.user_id, anonymousSessionId: session.anonymous_session_id, ontologyLeafId: item.ontology_leaf_id, score: evaluation.score });
 
@@ -56,5 +69,5 @@ export async function POST(request: Request) {
       sessionComplete = true;
     }
   }
-  return NextResponse.json({ ok: true, evaluation, followUp, sessionComplete, submittedAnswer: answer, idealAnswer });
+  return NextResponse.json({ ok: true, evaluation, evaluationMode, advancedEvaluationAvailable: evaluationMode === "baseline", followUp, sessionComplete, submittedAnswer: answer, idealAnswer });
 }
