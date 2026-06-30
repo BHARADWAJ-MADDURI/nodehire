@@ -14,9 +14,10 @@ export async function getCachedOrGenerateQuestion(input: {
   ontologyLeafId: string;
   mode: QuestionMode;
   difficulty: QuestionDifficulty;
+  excludeQuestionIds?: string[];
 }) {
   const admin = createSupabaseAdminClient();
-  const { data: cached } = await admin
+  let query = admin
     .from("question_bank")
     .select("*")
     .eq("ontology_leaf_id", input.ontologyLeafId)
@@ -24,15 +25,18 @@ export async function getCachedOrGenerateQuestion(input: {
     .eq("difficulty", input.difficulty)
     .order("hit_count", { ascending: true })
     .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  if (input.excludeQuestionIds?.length) query = query.not("id", "in", `(${input.excludeQuestionIds.join(",")})`);
+  const { data: cachedRows } = await query;
+  const cached = cachedRows?.[0] ?? null;
 
   if (cached && !isLegacyVagueQuestion(cached)) {
     await admin.from("question_bank").update({ hit_count: cached.hit_count + 1 }).eq("id", cached.id);
     return { question: cached, cacheHit: true };
   }
 
-  const generated = generateQuestion(input);
+  const { count: variantCount } = await admin.from("question_bank").select("id", { count: "exact", head: true }).eq("ontology_leaf_id", input.ontologyLeafId).eq("mode", input.mode).eq("difficulty", input.difficulty);
+  const generated = generateQuestion({ ...input, variantIndex: variantCount ?? 0 });
   const payload = {
     ontology_leaf_id: input.ontologyLeafId,
     mode: input.mode,

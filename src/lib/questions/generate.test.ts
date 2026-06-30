@@ -36,4 +36,12 @@ describe("question generation", () => {
     expect(question.questionText).toContain("5,000-row React table");
     expect(question.questionText).toContain("concurrency");
   });
+
+  it("creates distinct realistic mock variants without a fake five-minute limit", () => {
+    const first = generateQuestion({ ontologyLeafId: "rcsa-controls", mode: "mock", difficulty: "medium", variantIndex: 0 });
+    const second = generateQuestion({ ontologyLeafId: "rcsa-controls", mode: "mock", difficulty: "medium", variantIndex: 1 });
+    expect(first.questionText).not.toBe(second.questionText);
+    expect(first.questionText).not.toContain("You have five minutes");
+    expect(second.questionText).toContain("senior stakeholder");
+  });
 });

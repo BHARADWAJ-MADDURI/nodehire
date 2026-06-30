@@ -20,6 +20,12 @@ const scenarios: Record<string, string> = {
   "stakeholder-management": "Sales wants a feature this month, Security requires a redesign, and Engineering estimates eight weeks. Walk through how you would reach and document a decision with these three groups.",
   "process-modeling": "An insurance claim passes through email, a spreadsheet, and two approval systems, with 20% rework. Map the current state and define the evidence used to choose the first future-state improvement.",
   "business-analytics": "A product's conversion rate rose from 4% to 5% after a release, while traffic mix also changed. Explain how you would determine whether the release caused the improvement and what you would report.",
+  "enterprise-risk-frameworks": "Business units use incompatible risk ratings, leaving leadership unable to compare enterprise exposure. Design a common risk taxonomy, scoring methodology, governance model, and rollout plan without erasing important local context.",
+  "rcsa-controls": "A global RCSA identifies 120 controls, but owners rate nearly all of them effective without evidence. Redesign the assessment, challenge, evidence, issue, and remediation process so leadership can trust the results.",
+  "risk-metrics-reporting": "The board receives 80 risk metrics with no thresholds, trends, or connection to decisions. Select a concise KRI set and design escalation and reporting that shows exposure, mitigation progress, and emerging risk.",
+  "audit-assurance": "Internal audit reports a repeat finding after management marked remediation complete. Explain how you would determine why assurance failed, validate corrective action, and prevent premature closure.",
+  "compliance-program-management": "A new regulatory requirement affects Legal, Finance, Product, and regional operations with a nine-month deadline. Build the compliance program plan, ownership model, milestones, dependencies, evidence, and escalation path.",
+  "risk-stakeholder-governance": "A product leader accepts a high risk that Legal believes exceeds enterprise appetite. Describe how you would facilitate the decision, document accountability, escalate appropriately, and preserve the working relationship.",
   "test-strategy": "A team has two weeks to release a checkout redesign affecting pricing, inventory, payment, and confirmation. Build a risk-based test strategy and state exactly what would block release.",
   "automation-architecture": "Six teams share a UI automation framework with 3,000 tests, a 12% flake rate, and a 90-minute runtime. Propose an architecture and migration plan that reduces both without stopping feature delivery.",
   "api-testing": "A payment authorization API supports retries, reversals, and asynchronous webhooks. Define the concrete tests for duplicate requests, out-of-order events, dependency timeouts, and ledger integrity.",
@@ -56,7 +62,20 @@ export function idealAnswerFor(ontologyLeafId: string, skillName = "this skill")
   return idealAnswers[ontologyLeafId] ?? `A strong ${skillName} answer directly solves the stated scenario, states assumptions, gives concrete implementation or decision details, covers the most likely failure modes and tradeoffs, and defines measurable validation and success criteria.`;
 }
 
-export function generateQuestion(input: { ontologyLeafId: string; mode: QuestionMode; difficulty: QuestionDifficulty }): GeneratedQuestion {
+const interviewAngles = [
+  "Explain the first decisions you would make, who owns each action, and what evidence would change your approach.",
+  "Now assume a senior stakeholder disputes your assessment. Show how you would challenge, align, and document the final decision.",
+  "Describe the most likely way this approach could fail, the early warning signal, and the recovery plan.",
+  "Give a 30-60-90 day implementation plan with concrete milestones, dependencies, and success measures.",
+  "Compare two viable approaches, choose one, and defend the tradeoff to an executive audience.",
+  "Assume the available data is incomplete and teams use inconsistent definitions. Explain how you would reach a defensible recommendation.",
+  "Describe how you would scale the approach across regions while preserving accountability and local regulatory needs.",
+  "An audit or post-incident review finds the process ineffective six months later. Diagnose why and redesign the operating model.",
+  "Identify the three artifacts you would produce and explain how each one drives a decision rather than becoming paperwork.",
+  "Answer with a concrete example from your experience, including conflict, your personal contribution, and a measurable result.",
+];
+
+export function generateQuestion(input: { ontologyLeafId: string; mode: QuestionMode; difficulty: QuestionDifficulty; variantIndex?: number }): GeneratedQuestion {
   const skill = ONTOLOGY.find((item) => item.id === input.ontologyLeafId);
   if (!skill) throw new Error("Unknown ontology skill.");
   const base = scenarios[skill.id] ?? `A production team reports a recurring ${skill.name} failure affecting 5% of requests after a deployment. Diagnose the likely causes, propose a specific fix, and define two measurements that prove the fix worked.`;
@@ -65,7 +84,11 @@ export function generateQuestion(input: { ontologyLeafId: string; mode: Question
     : input.difficulty === "hard"
       ? "Include scale or concurrency limits, the most dangerous failure mode, observability, rollout safety, and the tradeoff you would accept."
       : "State your assumptions, compare the main tradeoffs, and give measurable validation criteria.";
-  const modeLead = input.mode === "mock" ? "You have five minutes. " : "";
+  const variantIndex = Math.max(0, input.variantIndex ?? 0);
+  const angle = interviewAngles[variantIndex % interviewAngles.length];
+  const additionalConstraint = variantIndex >= interviewAngles.length
+    ? `For this variation, assume the program spans ${12 + variantIndex * 3} teams and leadership expects a decision within ${2 + variantIndex % 6} weeks.`
+    : "";
   const answerType = skill.id === "data-structures" ? "code" : skill.id === "system-design" ? "diagram" : "text";
   const dimensions = answerType === "code"
     ? ["reasoning-based correctness", "estimated time and space complexity", "edge-case awareness", "communication of approach"]
@@ -74,7 +97,7 @@ export function generateQuestion(input: { ontologyLeafId: string; mode: Question
       : ["technical accuracy", "structured reasoning", "tradeoff awareness", "concrete evidence"];
   return {
     answerType,
-    questionText: `${modeLead}${base} ${depth}`,
+    questionText: `${base} ${depth} ${input.mode === "mock" ? angle : ""} ${additionalConstraint}`.trim(),
     idealAnswer: idealAnswerFor(skill.id, skill.name),
     evaluationRubric: { dimensions, strongAnswerSignals: ["answers the stated scenario", "uses concrete details", "covers risks", "defines validation"] },
     followUpHints: ["Ask for the exact implementation or decision.", "Probe the largest failure mode.", "Ask for a measurable success criterion."],

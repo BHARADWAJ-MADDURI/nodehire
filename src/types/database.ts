@@ -174,8 +174,8 @@ export type Database = {
         Relationships: [];
       };
       practice_sessions: {
-        Row: { id: string; prep_context_id: string; user_id: string | null; anonymous_session_id: string | null; mode: string; status: string; difficulty: string; created_at: string; completed_at: string | null };
-        Insert: { id?: string; prep_context_id: string; user_id?: string | null; anonymous_session_id?: string | null; mode?: string; status?: string; difficulty?: string; completed_at?: string | null };
+        Row: { id: string; prep_context_id: string; user_id: string | null; anonymous_session_id: string | null; mode: string; status: string; difficulty: string; duration_minutes: number | null; planned_question_count: number | null; created_at: string; completed_at: string | null };
+        Insert: { id?: string; prep_context_id: string; user_id?: string | null; anonymous_session_id?: string | null; mode?: string; status?: string; difficulty?: string; duration_minutes?: number | null; planned_question_count?: number | null; completed_at?: string | null };
         Update: Partial<Database["public"]["Tables"]["practice_sessions"]["Insert"]>;
         Relationships: [];
       };
