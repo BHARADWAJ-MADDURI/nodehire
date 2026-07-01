@@ -32,12 +32,12 @@ export async function POST(request: Request) {
   let evaluation: EvaluationResult;
   let evaluationMode: "baseline" | "ai" = "baseline";
   if (!credential) {
-    evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text");
+    evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text", idealAnswer);
   } else {
     try {
       const providerResult = await evaluateWithProvider({ provider: credential.provider, apiKey: credential.apiKey, source: credential.source, question: item.prompt_override ?? question?.question_text ?? "Interview question", answer, imageDataUrl: parsed.data.answerImage, rubric: question?.evaluation_rubric, answerType: question?.answer_type ?? "text" });
       if (providerResult.ceilingReached) {
-        evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text");
+        evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text", idealAnswer);
       } else if (!providerResult.result.readable) {
         return NextResponse.json({ ok: true, evaluationSkipped: true, code: "UNREADABLE_DIAGRAM", message: "Couldn't read the diagram — try adding labels or more detail. Your attempt was not scored.", submittedAnswer: "Diagram submitted", idealAnswer });
       } else {
@@ -48,11 +48,14 @@ export async function POST(request: Request) {
     } catch (error) {
       if (error instanceof ProviderError && credential.source === "byok") return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
       if (question?.answer_type === "diagram") return NextResponse.json({ ok: true, evaluationSkipped: true, code: "PROVIDER_UNAVAILABLE", message: "Diagram evaluation is temporarily unavailable. Compare with the model approach for this turn.", submittedAnswer: "Diagram submitted", idealAnswer });
-      evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text");
+      evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text", idealAnswer);
     }
   }
-  await admin.from("session_questions").update({ answer_text: answer, score: evaluation.score, evaluation, answered_at: new Date().toISOString() }).eq("id", item.id);
-  await updatePracticeSignals({ userId: session.user_id, anonymousSessionId: session.anonymous_session_id, ontologyLeafId: item.ontology_leaf_id, score: evaluation.score });
+  if (evaluationMode === "baseline") {
+    evaluation.feedback = `Baseline score: substance 15, structure 15, validation 15, risks/tradeoffs 15, evidence 10, and model-answer concept coverage 30. ${evaluation.feedback}`;
+  }
+  await admin.from("session_questions").update({ answer_text: answer, score: evaluation.score, evaluation: { ...evaluation, evaluationMode }, answered_at: new Date().toISOString() }).eq("id", item.id);
+  await updatePracticeSignals({ userId: session.user_id, anonymousSessionId: session.anonymous_session_id, ontologyLeafId: item.ontology_leaf_id, score: evaluation.score, confidenceWeight: evaluationMode === "baseline" ? 0.35 : 1 });
 
   let followUp = null;
   let sessionComplete = false;
