@@ -5,6 +5,7 @@ import { getOwnedPrepContext } from "@/lib/owned-prep-context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { TopicAnalysis } from "@/lib/topic-map/analyze";
 import { TopicMapView } from "./topic-map-view";
+import { persistTopicAnalysis } from "@/lib/topic-map/persist";
 
 export default async function TopicMapPage({ params }: { params: Promise<{ contextId: string }> }) {
   const { contextId } = await params;
@@ -12,11 +13,15 @@ export default async function TopicMapPage({ params }: { params: Promise<{ conte
   if (!context) notFound();
 
   const admin = createSupabaseAdminClient();
-  const { data: tree } = await admin
+  let { data: tree } = await admin
     .from("topic_trees")
     .select("id, tree, updated_at")
     .eq("prep_context_id", context.id)
     .maybeSingle();
+  if (!tree) {
+    const generated = await persistTopicAnalysis(context);
+    tree = { id: generated.treeId, tree: generated.analysis, updated_at: new Date().toISOString() };
+  }
   const { data: mappings } = tree
     ? await admin.from("topic_skill_mappings").select("ontology_leaf_id, selected").eq("topic_tree_id", tree.id)
     : { data: null };

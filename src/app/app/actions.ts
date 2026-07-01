@@ -53,13 +53,15 @@ export async function savePrepContext(
     notes: parsed.data.notes || null,
   };
   const id = parsed.data.id || null;
+  let savedId = id;
 
   if (currentOwner.kind === "user") {
     const query = id
-      ? currentOwner.supabase.from("prep_contexts").update(values).eq("id", id)
-      : currentOwner.supabase.from("prep_contexts").insert({ ...values, user_id: currentOwner.id });
-    const { error } = await query;
+      ? currentOwner.supabase.from("prep_contexts").update(values).eq("id", id).select("id").single()
+      : currentOwner.supabase.from("prep_contexts").insert({ ...values, user_id: currentOwner.id }).select("id").single();
+    const { data, error } = await query;
     if (error) return { error: "We could not save this prep context." };
+    savedId = data.id;
   } else {
     const admin = createSupabaseAdminClient();
     if (!id) {
@@ -67,14 +69,15 @@ export async function savePrepContext(
       if ((count ?? 0) >= 3) return { error: "Guest sessions can save up to three prep contexts." };
     }
     const query = id
-      ? admin.from("prep_contexts").update(values).eq("id", id).eq("anonymous_session_id", currentOwner.id)
-      : admin.from("prep_contexts").insert({ ...values, anonymous_session_id: currentOwner.id });
-    const { error } = await query;
+      ? admin.from("prep_contexts").update(values).eq("id", id).eq("anonymous_session_id", currentOwner.id).select("id").single()
+      : admin.from("prep_contexts").insert({ ...values, anonymous_session_id: currentOwner.id }).select("id").single();
+    const { data, error } = await query;
     if (error) return { error: "We could not save this prep context." };
+    savedId = data.id;
   }
 
   revalidatePath("/app");
-  redirect("/app?saved=1");
+  redirect(`/app/topics/${savedId}`);
 }
 
 export async function deletePrepContext(formData: FormData) {
