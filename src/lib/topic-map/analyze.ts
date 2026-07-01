@@ -38,9 +38,10 @@ export function analyzePrepContext(input: {
   role: string;
   seniority?: string | null;
   jobDescription: string;
+  resumeText?: string | null;
 }): TopicAnalysis {
   const family = roleFamily(input.role);
-  const haystack = `${input.company} ${input.role} ${input.seniority ?? ""} ${input.jobDescription}`.toLowerCase();
+  const haystack = `${input.company} ${input.role} ${input.seniority ?? ""} ${input.jobDescription} ${input.resumeText ?? ""}`.toLowerCase();
   const inferred = /principal|staff|lead|manager|architect|senior/.exec(haystack)?.[0];
   const seniority = input.seniority || inferred || "Not specified";
 

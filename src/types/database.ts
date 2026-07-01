@@ -38,6 +38,7 @@ export type Database = {
           interview_date: string | null;
           job_description: string;
           notes: string | null;
+          resume_text: string | null;
           role: string;
           seniority: string | null;
           updated_at: string;
@@ -50,6 +51,7 @@ export type Database = {
           interview_date?: string | null;
           job_description: string;
           notes?: string | null;
+          resume_text?: string | null;
           role: string;
           seniority?: string | null;
           user_id?: string | null;
@@ -174,8 +176,8 @@ export type Database = {
         Relationships: [];
       };
       practice_sessions: {
-        Row: { id: string; prep_context_id: string; user_id: string | null; anonymous_session_id: string | null; mode: string; status: string; difficulty: string; duration_minutes: number | null; planned_question_count: number | null; created_at: string; completed_at: string | null };
-        Insert: { id?: string; prep_context_id: string; user_id?: string | null; anonymous_session_id?: string | null; mode?: string; status?: string; difficulty?: string; duration_minutes?: number | null; planned_question_count?: number | null; completed_at?: string | null };
+        Row: { id: string; prep_context_id: string; user_id: string | null; anonymous_session_id: string | null; mode: string; status: string; difficulty: string; duration_minutes: number | null; planned_question_count: number | null; interview_round: string | null; created_at: string; completed_at: string | null };
+        Insert: { id?: string; prep_context_id: string; user_id?: string | null; anonymous_session_id?: string | null; mode?: string; status?: string; difficulty?: string; duration_minutes?: number | null; planned_question_count?: number | null; interview_round?: string | null; completed_at?: string | null };
         Update: Partial<Database["public"]["Tables"]["practice_sessions"]["Insert"]>;
         Relationships: [];
       };

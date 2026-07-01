@@ -6,7 +6,7 @@ import { analyzePrepContext, type TopicAnalysis } from "./analyze";
 export const TOPIC_MAP_VERSION = "ontology-v4";
 type PrepContext = Database["public"]["Tables"]["prep_contexts"]["Row"];
 
-export async function persistTopicAnalysis(context: PrepContext, analysis = analyzePrepContext({ company: context.company, role: context.role, seniority: context.seniority, jobDescription: context.job_description })) {
+export async function persistTopicAnalysis(context: PrepContext, analysis = analyzePrepContext({ company: context.company, role: context.role, seniority: context.seniority, jobDescription: context.job_description, resumeText: context.resume_text })) {
   const admin = createSupabaseAdminClient();
   const { data: tree, error: treeError } = await admin.from("topic_trees").upsert({
     prep_context_id: context.id,

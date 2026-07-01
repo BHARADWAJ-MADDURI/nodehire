@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         difficulty: parsed.data.difficulty,
       },
       question: result.question,
-      runtimeContext: injectRuntimeContext({ company: context.company, role: context.role, ontologyName: skill.name }),
+      runtimeContext: injectRuntimeContext({ company: context.company, role: context.role, ontologyName: skill.name, candidateBackground: context.resume_text }),
     });
   } catch {
     return NextResponse.json({ error: "A question could not be prepared." }, { status: 503 });

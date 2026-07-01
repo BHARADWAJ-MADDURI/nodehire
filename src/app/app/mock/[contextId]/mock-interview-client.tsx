@@ -12,9 +12,18 @@ import type { EvaluationResult } from "@/lib/evaluation/evaluate-answer";
 import { getSessionProviderHeaders } from "@/lib/providers/client";
 import { ProviderConnect } from "@/components/provider-connect";
 import { CodeWorkspace } from "@/components/code-workspace";
+import { PrintReportButton } from "@/components/print-report-button";
 
 type Question = { sessionQuestionId: string; question_text: string; answer_type: "text" | "code" | "diagram"; ideal_answer: string | null; runtimeContext: { framing: string } };
 type ReportItem = { question: string; score: number | null; feedback: string };
+type RoundType = "recruiter" | "hiring-manager" | "behavioral" | "skills" | "final";
+const roundOptions: Array<{ id: RoundType; label: string; description: string }> = [
+  { id: "recruiter", label: "Recruiter screen", description: "Motivation, fit, communication, and role alignment" },
+  { id: "hiring-manager", label: "Hiring manager", description: "Impact, judgment, ownership, and role depth" },
+  { id: "behavioral", label: "Behavioral", description: "STAR stories, influence, conflict, and leadership" },
+  { id: "skills", label: "Skills round", description: "Technical or domain-specific problem solving" },
+  { id: "final", label: "Final round", description: "Cross-functional judgment and executive communication" },
+];
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
@@ -24,6 +33,7 @@ function formatTime(totalSeconds: number) {
 
 export function MockInterviewClient({ prepContextId, company, role, authenticated }: { prepContextId: string; company: string; role: string; authenticated: boolean }) {
   const [durationMinutes, setDurationMinutes] = useState<30 | 60>(30);
+  const [roundType, setRoundType] = useState<RoundType>("hiring-manager");
   const [remainingSeconds, setRemainingSeconds] = useState(30 * 60);
   const [endsAt, setEndsAt] = useState<number | null>(null);
   const [sessionId, setSessionId] = useState("");
@@ -37,9 +47,14 @@ export function MockInterviewClient({ prepContextId, company, role, authenticate
   const [error, setError] = useState("");
   const [needProvider, setNeedProvider] = useState(false);
   const diagramRef = useRef<DiagramCanvasRef>(null);
+  const answerStartedAt = useRef<number | null>(null);
   const speech = useSpeech(setAnswer);
   const { stopListening, stopSpeaking } = speech;
   const current = questions[index];
+
+  useEffect(() => {
+    if (answer && !answerStartedAt.current) answerStartedAt.current = Date.now();
+  }, [answer]);
 
   useEffect(() => {
     if (!sessionId || !endsAt || complete) return;
@@ -60,7 +75,7 @@ export function MockInterviewClient({ prepContextId, company, role, authenticate
   async function start() {
     setBusy(true);
     setError("");
-    const response = await fetch("/api/mock/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prepContextId, difficulty: "medium", durationMinutes }) });
+    const response = await fetch("/api/mock/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prepContextId, difficulty: "medium", durationMinutes, roundType }) });
     const result = await response.json();
     if (response.ok) {
       setSessionId(result.sessionId);
@@ -69,6 +84,7 @@ export function MockInterviewClient({ prepContextId, company, role, authenticate
       setEndsAt(Date.now() + result.durationMinutes * 60_000);
       setIndex(0);
       setAnswer("");
+      answerStartedAt.current = null;
       setEvaluation(null);
       setReport([]);
       setComplete(false);
@@ -86,7 +102,7 @@ export function MockInterviewClient({ prepContextId, company, role, authenticate
     setError("");
     speech.stopListening();
     speech.stopSpeaking();
-    const response = await fetch("/api/evaluate", { method: "POST", headers: { "Content-Type": "application/json", ...getSessionProviderHeaders() }, body: JSON.stringify({ sessionId, sessionQuestionId: current.sessionQuestionId, answer, answerImage }) });
+    const response = await fetch("/api/evaluate", { method: "POST", headers: { "Content-Type": "application/json", ...getSessionProviderHeaders() }, body: JSON.stringify({ sessionId, sessionQuestionId: current.sessionQuestionId, answer, answerImage, answerDurationSeconds: answerStartedAt.current ? Math.max(1, (Date.now() - answerStartedAt.current) / 1000) : undefined }) });
     const result = await response.json();
     if (response.ok) {
       const item = { question: current.question_text, score: result.evaluation?.score ?? null, feedback: result.evaluation?.feedback ?? result.message ?? "Compare your response with the model approach." };
@@ -102,6 +118,7 @@ export function MockInterviewClient({ prepContextId, company, role, authenticate
     speech.stopSpeaking();
     setIndex((value) => value + 1);
     setAnswer("");
+    answerStartedAt.current = null;
     setEvaluation(null);
     setNeedProvider(false);
     setError("");
@@ -119,6 +136,7 @@ export function MockInterviewClient({ prepContextId, company, role, authenticate
     setQuestions([]);
     setIndex(0);
     setAnswer("");
+    answerStartedAt.current = null;
     setEvaluation(null);
     setReport([]);
     setComplete(false);
@@ -131,15 +149,16 @@ export function MockInterviewClient({ prepContextId, company, role, authenticate
     const scores = report.flatMap((item) => item.score === null ? [] : [item.score]);
     const average = scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
     return <main className="space-y-6">
-      <div><p className="text-sm font-medium text-primary">Interview report</p><h1 className="mt-2 text-3xl font-semibold">{role} at {company}</h1><p className="mt-2 text-muted-foreground">{durationMinutes}-minute round · {report.length} of {questions.length} questions completed</p></div>
-      <Card className="glass-panel border-0"><CardHeader><CardDescription>Overall evaluated score</CardDescription><CardTitle className="text-4xl">{average === null ? "Model-answer review" : `${average}/100`}</CardTitle></CardHeader><CardContent><Button onClick={resetForAnotherRound}><RotateCcw />Start a new non-repeating round</Button></CardContent></Card>
+      <div><p className="text-sm font-medium text-primary">Interview report</p><h1 className="mt-2 text-3xl font-semibold">{role} at {company}</h1><p className="mt-2 text-muted-foreground">{roundOptions.find((round) => round.id === roundType)?.label} · {durationMinutes} minutes · {report.length} of {questions.length} questions completed</p></div>
+      <Card className="glass-panel border-0"><CardHeader><CardDescription>Overall evaluated score</CardDescription><CardTitle className="text-4xl">{average === null ? "Model-answer review" : `${average}/100`}</CardTitle></CardHeader><CardContent className="flex flex-wrap gap-2"><Button onClick={resetForAnotherRound}><RotateCcw />Start a new non-repeating round</Button><PrintReportButton /></CardContent></Card>
       <div className="space-y-3">{report.map((item, itemIndex) => <Card key={itemIndex}><CardHeader><div className="flex justify-between gap-4"><CardTitle className="text-base">Question {itemIndex + 1}</CardTitle><Badge variant="outline">{item.score === null ? "Not scored" : `${item.score}/100`}</Badge></div><CardDescription>{item.question}</CardDescription></CardHeader><CardContent className="text-sm text-muted-foreground">{item.feedback}</CardContent></Card>)}</div>
     </main>;
   }
 
   if (!current) return <main>
     <div><p className="text-sm font-medium text-primary">Mock interview</p><h1 className="mt-2 text-3xl font-semibold">{role} at {company}</h1><p className="mt-2 text-muted-foreground">A timed, JD-focused round that avoids questions from your previous mock interviews.</p></div>
-    <Card className="glass-panel mt-8 border-0"><CardContent className="flex flex-col items-center py-14 text-center"><Play className="size-9 text-primary"/><h2 className="mt-4 text-xl font-semibold">Choose your interview length</h2><p className="mt-2 text-sm text-muted-foreground">Questions rotate across the strongest signals in this job description.</p>
+    <Card className="glass-panel mt-8 border-0"><CardContent className="flex flex-col items-center py-14 text-center"><Play className="size-9 text-primary"/><h2 className="mt-4 text-xl font-semibold">Build your interview round</h2><p className="mt-2 text-sm text-muted-foreground">Choose the stage you are preparing for, then set the duration.</p>
+      <div className="mt-6 grid w-full gap-3 md:grid-cols-2 xl:grid-cols-5">{roundOptions.map((round) => <button key={round.id} type="button" onClick={() => setRoundType(round.id)} className={`rounded-2xl border p-4 text-left transition ${roundType === round.id ? "border-primary bg-primary/10" : "bg-card/50"}`}><span className="font-semibold">{round.label}</span><span className="mt-2 block text-xs leading-5 text-muted-foreground">{round.description}</span></button>)}</div>
       <div className="mt-6 grid w-full max-w-xl gap-3 sm:grid-cols-2">{([30, 60] as const).map((minutes) => <button key={minutes} type="button" onClick={() => { setDurationMinutes(minutes); setRemainingSeconds(minutes * 60); }} className={`rounded-2xl border p-5 text-left transition ${durationMinutes === minutes ? "border-primary bg-primary/10" : "bg-card/50"}`}><span className="flex items-center gap-2 font-semibold"><Clock3 className="size-4" />{minutes === 60 ? "1 hour" : "30 minutes"}</span><span className="mt-2 block text-sm text-muted-foreground">{minutes === 60 ? "12" : "6"} role-specific questions</span></button>)}</div>
       <Button className="mt-6" onClick={start} disabled={busy}>{busy ? <Loader2 className="animate-spin"/> : <Play/>}Begin timed interview</Button>{error && <p className="mt-3 text-sm text-destructive">{error}</p>}
     </CardContent></Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, CheckCircle2, Loader2, Mic, MicOff, Square, Volume2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -37,10 +37,18 @@ export function DrillClient({ prepContextId, company, role, topics, authenticate
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [topicQuestionNumber, setTopicQuestionNumber] = useState(1);
   const diagramRef = useRef<DiagramCanvasRef>(null);
-  const speech = useSpeech(setAnswer);
+  const answerStartedAt = useRef<number | null>(null);
+  function updateAnswer(value: string) {
+    if (value && !answerStartedAt.current) answerStartedAt.current = Date.now();
+    setAnswer(value);
+  }
+  const speech = useSpeech(updateAnswer);
+  useEffect(() => {
+    if (answer && !answerStartedAt.current) answerStartedAt.current = Date.now();
+  }, [answer]);
 
   async function startForTopic(nextTopicId: string, questionNumber: number) {
-    setBusy(true); setError(""); setEvaluation(null); setAnswer(""); setSubmittedAnswer(""); setIdealAnswer(""); setPendingFollowUp(null); setSelfGrade(null); setNeedProvider(false);
+    setBusy(true); setError(""); setEvaluation(null); setAnswer(""); setSubmittedAnswer(""); setIdealAnswer(""); setPendingFollowUp(null); setSelfGrade(null); setNeedProvider(false); answerStartedAt.current = null;
     setTopicId(nextTopicId); setTopicQuestionNumber(questionNumber); setEvaluationMode(null); setShowAdvanced(false);
     const response = await fetch("/api/sessions/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prepContextId, ontologyLeafId: nextTopicId, difficulty }) });
     const result = await response.json();
@@ -59,7 +67,7 @@ export function DrillClient({ prepContextId, company, role, topics, authenticate
     if (active.answerType === "diagram" && !answerImage) { setError("Your canvas is empty. Add labeled components before submitting."); return; }
     if (active.answerType !== "diagram" && !answer.trim()) return;
     setBusy(true); setError("");
-    const response = await fetch("/api/evaluate", { method: "POST", headers: { "Content-Type": "application/json", ...getSessionProviderHeaders() }, body: JSON.stringify({ sessionId: active.sessionId, sessionQuestionId: active.sessionQuestionId, answer, answerImage }) });
+    const response = await fetch("/api/evaluate", { method: "POST", headers: { "Content-Type": "application/json", ...getSessionProviderHeaders() }, body: JSON.stringify({ sessionId: active.sessionId, sessionQuestionId: active.sessionQuestionId, answer, answerImage, answerDurationSeconds: answerStartedAt.current ? Math.max(1, (Date.now() - answerStartedAt.current) / 1000) : undefined }) });
     const result = await response.json();
     if (response.ok) {
       setEvaluation(result.evaluation ?? null);
@@ -76,7 +84,7 @@ export function DrillClient({ prepContextId, company, role, topics, authenticate
   function tryFollowUp() {
     if (!pendingFollowUp) return;
     setActive((current) => current ? { ...current, sessionQuestionId: pendingFollowUp.sessionQuestionId, questionText: pendingFollowUp.questionText } : current);
-    setAnswer(""); setEvaluation(null); setSubmittedAnswer(""); setIdealAnswer(""); setPendingFollowUp(null);
+    setAnswer(""); setEvaluation(null); setSubmittedAnswer(""); setIdealAnswer(""); setPendingFollowUp(null); answerStartedAt.current = null;
   }
 
   async function nextQuestion() {

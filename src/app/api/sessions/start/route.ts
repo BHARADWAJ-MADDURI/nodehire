@@ -33,5 +33,5 @@ export async function POST(request: Request) {
   if (error || !session) return NextResponse.json({ error: "Could not start drill." }, { status: 500 });
   const { data: item, error: itemError } = await admin.from("session_questions").insert({ session_id: session.id, question_id: prepared.question.id, ontology_leaf_id: parsed.data.ontologyLeafId, sequence_number: 1 }).select("id").single();
   if (itemError || !item) return NextResponse.json({ error: "Could not prepare drill question." }, { status: 500 });
-  return NextResponse.json({ ok: true, sessionId: session.id, sessionQuestionId: item.id, question: prepared.question, cacheHit: prepared.cacheHit, runtimeContext: injectRuntimeContext({ company: context.company, role: context.role, ontologyName: skill.name }) });
+  return NextResponse.json({ ok: true, sessionId: session.id, sessionQuestionId: item.id, question: prepared.question, cacheHit: prepared.cacheHit, runtimeContext: injectRuntimeContext({ company: context.company, role: context.role, ontologyName: skill.name, candidateBackground: context.resume_text }) });
 }

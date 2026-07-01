@@ -17,6 +17,7 @@ export type EvaluationResult = {
     evidence: number;
     conceptCoverage: number;
   };
+  delivery?: import("./delivery").DeliveryAnalysis;
 };
 
 const stopwords = new Set(["about", "after", "again", "answer", "approach", "before", "could", "explain", "from", "have", "into", "most", "should", "that", "their", "there", "these", "they", "this", "through", "using", "what", "when", "where", "which", "with", "would", "your"]);

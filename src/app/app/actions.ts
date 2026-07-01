@@ -17,6 +17,7 @@ const prepContextSchema = z.object({
   seniority: z.string().trim().max(80).optional(),
   interviewDate: z.union([z.iso.date(), z.literal("")]).optional(),
   notes: z.string().trim().max(2_000).optional(),
+  resumeText: z.string().trim().max(20_000).optional(),
 });
 
 async function owner() {
@@ -40,6 +41,7 @@ export async function savePrepContext(
     seniority: formData.get("seniority"),
     interviewDate: formData.get("interviewDate"),
     notes: formData.get("notes"),
+    resumeText: formData.get("resumeText"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
@@ -51,6 +53,7 @@ export async function savePrepContext(
     seniority: parsed.data.seniority || null,
     interview_date: parsed.data.interviewDate || null,
     notes: parsed.data.notes || null,
+    resume_text: parsed.data.resumeText || null,
   };
   const id = parsed.data.id || null;
   let savedId = id;

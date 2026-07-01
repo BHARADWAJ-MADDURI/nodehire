@@ -8,8 +8,9 @@ import { resolveProviderCredential } from "@/lib/providers/credential";
 import { evaluateWithProvider } from "@/lib/providers/evaluate";
 import { ProviderError } from "@/lib/providers/types";
 import { evaluateAnswer, type EvaluationResult } from "@/lib/evaluation/evaluate-answer";
+import { analyzeDelivery } from "@/lib/evaluation/delivery";
 
-const schema = z.object({ sessionId: z.uuid(), sessionQuestionId: z.uuid(), answer: z.string().max(20_000).optional(), answerImage: z.string().max(3_000_000).optional() }).refine((value) => value.answer?.trim() || value.answerImage, "Answer is required.");
+const schema = z.object({ sessionId: z.uuid(), sessionQuestionId: z.uuid(), answer: z.string().max(20_000).optional(), answerImage: z.string().max(3_000_000).optional(), answerDurationSeconds: z.number().positive().max(7200).optional() }).refine((value) => value.answer?.trim() || value.answerImage, "Answer is required.");
 
 export async function POST(request: Request) {
   let raw: unknown;
@@ -18,7 +19,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Answer is required." }, { status: 400 });
   const admin = createSupabaseAdminClient();
   const { data: session } = await admin.from("practice_sessions").select("*").eq("id", parsed.data.sessionId).eq("status", "active").maybeSingle();
-  if (!session || !await getOwnedPrepContext(session.prep_context_id)) return NextResponse.json({ error: "Session not found." }, { status: 404 });
+  const context = session ? await getOwnedPrepContext(session.prep_context_id) : null;
+  if (!session || !context) return NextResponse.json({ error: "Session not found." }, { status: 404 });
   const { data: item } = await admin.from("session_questions").select("*").eq("id", parsed.data.sessionQuestionId).eq("session_id", session.id).maybeSingle();
   if (!item || item.answered_at) return NextResponse.json({ error: "Question is unavailable or already answered." }, { status: 409 });
   const { data: skill } = await admin.from("ontology_skills").select("name").eq("id", item.ontology_leaf_id).single();
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
     evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text", idealAnswer);
   } else {
     try {
-      const providerResult = await evaluateWithProvider({ provider: credential.provider, apiKey: credential.apiKey, source: credential.source, question: item.prompt_override ?? question?.question_text ?? "Interview question", answer, imageDataUrl: parsed.data.answerImage, rubric: question?.evaluation_rubric, answerType: question?.answer_type ?? "text" });
+      const providerResult = await evaluateWithProvider({ provider: credential.provider, apiKey: credential.apiKey, source: credential.source, question: item.prompt_override ?? question?.question_text ?? "Interview question", answer, imageDataUrl: parsed.data.answerImage, rubric: question?.evaluation_rubric, answerType: question?.answer_type ?? "text", candidateContext: context.resume_text });
       if (providerResult.ceilingReached) {
         evaluation = evaluateAnswer(answer, skill?.name ?? "interview", question?.answer_type === "code" ? "code" : "text", idealAnswer);
       } else if (!providerResult.result.readable) {
@@ -53,6 +55,25 @@ export async function POST(request: Request) {
   }
   if (evaluationMode === "baseline") {
     evaluation.feedback = `Baseline score: substance 15, structure 15, validation 15, risks/tradeoffs 15, evidence 10, and model-answer concept coverage 30. ${evaluation.feedback}`;
+  }
+  if (answer) {
+    evaluation.delivery = analyzeDelivery(answer, parsed.data.answerDurationSeconds);
+    const deliverySummary = [
+      evaluation.delivery.durationSeconds ? `response ${evaluation.delivery.durationSeconds}s` : null,
+      evaluation.delivery.estimatedWordsPerMinute ? `estimated ${evaluation.delivery.estimatedWordsPerMinute} WPM` : null,
+      `${evaluation.delivery.fillerWordCount} filler phrase${evaluation.delivery.fillerWordCount === 1 ? "" : "s"}`,
+    ].filter(Boolean).join(", ");
+    evaluation.feedback = `${evaluation.feedback} Delivery: ${deliverySummary}.`;
+    const isBehavioral = item.ontology_leaf_id === "behavioral-leadership" || session.interview_round === "behavioral";
+    if (isBehavioral) {
+      const missingStar = Object.entries(evaluation.delivery.star).filter(([, present]) => !present).map(([part]) => part);
+      if (missingStar.length) {
+        evaluation.gaps = [...new Set([...evaluation.gaps, `Complete the STAR story: add ${missingStar.join(", ")}`])];
+        evaluation.score = Math.min(evaluation.score, missingStar.includes("action") || missingStar.includes("result") ? 60 : 75);
+        evaluation.level = evaluation.score >= 55 ? "developing" : "needs-work";
+        evaluation.needsFollowUp = evaluation.score < 70;
+      }
+    }
   }
   await admin.from("session_questions").update({ answer_text: answer, score: evaluation.score, evaluation: { ...evaluation, evaluationMode }, answered_at: new Date().toISOString() }).eq("id", item.id);
   await updatePracticeSignals({ userId: session.user_id, anonymousSessionId: session.anonymous_session_id, ontologyLeafId: item.ontology_leaf_id, score: evaluation.score, confidenceWeight: evaluationMode === "baseline" ? 0.35 : 1 });

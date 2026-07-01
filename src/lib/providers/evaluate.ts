@@ -14,7 +14,7 @@ const resultSchema = z.object({
   estimatedComplexity: z.string().optional(),
 });
 
-export async function evaluateWithProvider(input: { provider: ProviderName; apiKey: string; source: "app" | "byok"; question: string; answer?: string; imageDataUrl?: string; rubric: unknown; answerType: string }) {
+export async function evaluateWithProvider(input: { provider: ProviderName; apiKey: string; source: "app" | "byok"; question: string; answer?: string; imageDataUrl?: string; rubric: unknown; answerType: string; candidateContext?: string | null }) {
   const units = input.imageDataUrl ? 3 : 1;
   const admin = createSupabaseAdminClient();
   if (input.source === "app") {
@@ -23,7 +23,7 @@ export async function evaluateWithProvider(input: { provider: ProviderName; apiK
     if (!allowed) return { ceilingReached: true as const };
   }
   try {
-    const prompt = `Evaluate this interview answer. Return JSON only with readable, score (0-100), strengths, gaps, feedback, betterInterviewAnswer, and optional estimatedComplexity. Never invent strengths. If the candidate says they do not know, score 0. If an image is illegible, set readable false and score 0 without penalizing language. Question: ${input.question}\nAnswer type: ${input.answerType}\nRubric: ${JSON.stringify(input.rubric)}\nAnswer: ${input.answer ?? "See submitted diagram."}`;
+    const prompt = `Evaluate this interview answer. Return JSON only with readable, score (0-100), strengths, gaps, feedback, betterInterviewAnswer, and optional estimatedComplexity. Never invent strengths or candidate experience. If the candidate says they do not know, score 0. If an image is illegible, set readable false and score 0 without penalizing language. Question: ${input.question}\nAnswer type: ${input.answerType}\nRubric: ${JSON.stringify(input.rubric)}\nCandidate background (use only to check truthful grounding): ${input.candidateContext?.slice(0, 12000) || "Not provided"}\nAnswer: ${input.answer ?? "See submitted diagram."}`;
     const raw = await callProvider({ provider: input.provider, apiKey: input.apiKey, prompt, imageDataUrl: input.imageDataUrl });
     const json = JSON.parse(raw.replace(/^```json\s*|\s*```$/g, ""));
     const result = resultSchema.parse(json);
