@@ -26,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-background/60">
+      <a href="#main-content" className="fixed left-4 top-2 z-50 -translate-y-20 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition focus:translate-y-0">Skip to main content</a>
       <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <Brand />
@@ -42,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <WorkspaceNav contextId={contextId} />
           <div className="hidden rounded-2xl border bg-card/50 p-4 text-xs leading-5 text-muted-foreground lg:block">Your selected topics stay active as you move between drills, progress, and mock interviews.</div>
         </aside>
-        <div>{children}</div>
+        <div id="main-content" tabIndex={-1}>{children}</div>
       </div>
     </div>
   );
