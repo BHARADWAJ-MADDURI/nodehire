@@ -40,7 +40,7 @@ export default async function ProgressPage({ searchParams }: { searchParams: Pro
   const parentNames = new Map((parents ?? []).map((skill) => [skill.id, skill.name]));
   const skillLabel = (leafId: string) => {
     const skill = skillNames.get(leafId);
-    return skill?.parent_id ? `${parentNames.get(skill.parent_id) ?? skill.domain} > ${skill.name}` : skill?.name ?? leafId;
+    return skill?.parent_id ? `${parentNames.get(skill.parent_id) ?? skill.domain} > ${skill.name}` : skill?.name ?? leafId.split("-").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ");
   };
   const branchRollups = parentIds.map((parentId) => {
     const children = mastery.filter((item) => skillNames.get(item.ontology_leaf_id)?.parent_id === parentId);
@@ -52,14 +52,18 @@ export default async function ProgressPage({ searchParams }: { searchParams: Pro
   const activeContext = contexts.find((context) => context.id === params.context) ?? contexts[0];
   const contextSessions = activeContext ? sessions.filter((session) => session.prep_context_id === activeContext.id) : sessions;
   let readiness = { role: 0, jobDescription: 0, company: 0 };
+  let activeMappings: Array<{ ontology_leaf_id: string; weight: number }> = [];
   if (activeContext) {
     const { data: tree } = await admin.from("topic_trees").select("id").eq("prep_context_id", activeContext.id).maybeSingle();
     const { data: mappings } = tree ? await admin.from("topic_skill_mappings").select("ontology_leaf_id, weight").eq("topic_tree_id", tree.id).eq("selected", true) : { data: [] };
-    readiness = computeReadiness(mappings ?? [], masteryMap);
+    activeMappings = mappings ?? [];
+    readiness = computeReadiness(activeMappings, masteryMap);
   }
   const sessionIds = contextSessions.map((session) => session.id);
   const { data: answers } = sessionIds.length ? await admin.from("session_questions").select("score, answered_at, answer_text, ontology_leaf_id, evaluation").in("session_id", sessionIds).not("score", "is", null).order("answered_at", { ascending: true }) : { data: [] };
-  const nextWeakness = weaknesses[0];
+  const activeLeafIds = new Set(activeMappings.map((mapping) => mapping.ontology_leaf_id));
+  const nextWeakness = weaknesses.find((weakness) => activeLeafIds.has(weakness.ontology_leaf_id));
+  const nextLeafId = nextWeakness?.ontology_leaf_id ?? [...activeMappings].sort((a, b) => b.weight - a.weight)[0]?.ontology_leaf_id;
   const daysUntilInterview = activeContext?.interview_date ? Math.ceil((new Date(`${activeContext.interview_date}T12:00:00`).getTime() - currentTimestamp()) / 86_400_000) : null;
   const plan = daysUntilInterview === null
     ? ["Complete one three-question deep dive", "Retry the weakest skill", "Run one timed mock each week"]
@@ -79,6 +83,6 @@ export default async function ProgressPage({ searchParams }: { searchParams: Pro
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><Activity className="size-5 text-primary" />Weakness heatmap</CardTitle></CardHeader><CardContent className="grid grid-cols-2 gap-3">{weaknesses.length ? weaknesses.map((item) => <div key={item.ontology_leaf_id} className="rounded-xl border p-4" style={{ backgroundColor: `color-mix(in oklab, var(--destructive) ${Math.round(Number(item.weakness_score) * .22)}%, transparent)` }}><p className="text-sm font-medium">{skillLabel(item.ontology_leaf_id)}</p><p className="mt-1 text-xs text-muted-foreground">{Math.round(Number(item.weakness_score))}% attention</p></div>) : <p className="col-span-2 text-sm text-muted-foreground">Weakness signals appear after evaluated answers.</p>}</CardContent></Card></div>
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="size-5 text-primary" />Answer trend</CardTitle></CardHeader><CardContent><div className="flex h-40 items-end gap-2">{(answers ?? []).map((answer, index) => <div key={index} className="min-w-5 flex-1 rounded-t bg-primary/80" style={{ height: `${Math.max(6, Number(answer.score))}%` }} title={`${answer.score}/100`} />)}{!answers?.length && <p className="self-center text-sm text-muted-foreground">Your answer scores will chart here.</p>}</div></CardContent></Card>
     <Card><CardHeader><CardTitle>Answer history and retries</CardTitle><CardDescription>Revisit low-scoring skills after reviewing the model answer.</CardDescription></CardHeader><CardContent className="space-y-3">{answers?.length ? [...answers].reverse().slice(0, 8).map((answer, index) => <div key={`${answer.answered_at}-${index}`} className="flex flex-col justify-between gap-3 rounded-xl border p-4 sm:flex-row sm:items-center"><div><p className="line-clamp-1 text-sm font-medium">{skillLabel(answer.ontology_leaf_id)}</p><p className="mt-1 text-xs text-muted-foreground">{answer.score}/100 · {answer.answer_text ? `${answer.answer_text.split(/\s+/).length} words` : "Diagram response"}</p></div>{activeContext && <Link href={`/app/drill/${activeContext.id}?leaf=${answer.ontology_leaf_id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Retry skill</Link>}</div>) : <p className="text-sm text-muted-foreground">Completed answers will appear here.</p>}</CardContent></Card>
-    <div className="grid gap-6 xl:grid-cols-2"><Card><CardHeader><CardTitle>Recent sessions</CardTitle></CardHeader><CardContent className="space-y-3">{contextSessions.map((session) => <div key={session.id} className="flex items-center justify-between rounded-xl border p-3 text-sm"><span>{activeContext?.role ?? "Practice"}</span><Badge variant="outline">{session.status}</Badge></div>)}</CardContent></Card><Card className="border-primary/25 bg-primary/5"><CardHeader><CardTitle>Recommended next drill</CardTitle><CardDescription>{nextWeakness ? `Strengthen ${skillLabel(nextWeakness.ontology_leaf_id)}.` : "Complete your first drill to get a recommendation."}</CardDescription></CardHeader><CardContent>{activeContext && <Link href={`/app/drill/${activeContext.id}?leaf=${nextWeakness?.ontology_leaf_id ?? ""}`} className={buttonVariants()}>Start recommended drill <ArrowRight /></Link>}</CardContent></Card></div>
+    <div className="grid gap-6 xl:grid-cols-2"><Card><CardHeader><CardTitle>Recent sessions</CardTitle></CardHeader><CardContent className="space-y-3">{contextSessions.map((session) => <div key={session.id} className="flex items-center justify-between rounded-xl border p-3 text-sm"><span>{activeContext?.role ?? "Practice"}</span><Badge variant="outline">{session.status}</Badge></div>)}</CardContent></Card><Card className="border-primary/25 bg-primary/5"><CardHeader><CardTitle>Recommended next drill</CardTitle><CardDescription>{nextLeafId ? `${nextWeakness ? "Strengthen" : "Start with"} ${skillLabel(nextLeafId)}.` : "Generate a topic map to get a recommendation."}</CardDescription></CardHeader><CardContent>{activeContext && nextLeafId && <Link href={`/app/drill/${activeContext.id}?leaf=${nextLeafId}`} className={buttonVariants()}>Start recommended drill <ArrowRight /></Link>}</CardContent></Card></div>
   </main>;
 }
